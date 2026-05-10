@@ -1,14 +1,21 @@
 import { cache } from "react"
 import { demoAgents, demoConversations, demoFriends, demoResources } from "@/lib/demo-data"
 import { createSupabaseServerClient, getCurrentUserId } from "@/lib/supabase/server"
-import { hasGoogleCalendarEnv } from "@/lib/env"
+import { hasGoogleCalendarEnv, hasProviderOAuthEnv } from "@/lib/env"
+import { providerDefinitions } from "@/lib/providers/registry"
 import type {
   Agent,
+  AgentToolPermission,
   Conversation,
   ConversationMessage,
   ConversationWithMessages,
   Friend,
+  McpConnection,
+  McpTool,
+  ProviderConnectionCard,
   Resource,
+  SoftHold,
+  ToolCallAudit,
 } from "@/lib/types"
 
 type FriendRow = {
@@ -68,6 +75,24 @@ export async function getAgentResourceIds(agentId: string): Promise<string[]> {
   return (data ?? []).map((row) => row.resource_id as string)
 }
 
+export async function getAgentToolPermissionIds(agentId: string): Promise<string[]> {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    return []
+  }
+
+  const { data } = await supabase
+    .from("agent_tool_permissions")
+    .select("connection_id,tool_id")
+    .eq("agent_id", agentId)
+    .eq("user_id", userId)
+
+  return ((data ?? []) as Pick<AgentToolPermission, "connection_id" | "tool_id">[])
+    .map((row) => `${row.connection_id}:${row.tool_id}`)
+}
+
 export const getResources = cache(async (): Promise<Resource[]> => {
   const supabase = await createSupabaseServerClient()
   const userId = await getCurrentUserId()
@@ -88,6 +113,119 @@ export const getResources = cache(async (): Promise<Resource[]> => {
 
   return (data ?? []).map(sanitizeResource) as Resource[]
 })
+
+export const getSoftHolds = cache(async (): Promise<SoftHold[]> => {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from("soft_holds")
+    .select("*")
+    .eq("user_id", userId)
+    .order("start_at", { ascending: true })
+
+  if (error) {
+    return []
+  }
+
+  return (data ?? []) as SoftHold[]
+})
+
+export const getProviderConnectionCards = cache(async (): Promise<ProviderConnectionCard[]> => {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    return providerDefinitions.map((provider) => ({
+      provider: provider.id,
+      label: provider.label,
+      description: provider.description,
+      configured: hasProviderOAuthEnv(provider.id),
+      status: "not_connected",
+      connection: null,
+      tools: [],
+    }))
+  }
+
+  await ensureInternalConnection(userId)
+
+  const [{ data: connections }, { data: tools }] = await Promise.all([
+    supabase
+      .from("mcp_connections")
+      .select("*")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("mcp_tools")
+      .select("*")
+      .order("provider", { ascending: true })
+      .order("is_write", { ascending: true }),
+  ])
+
+  const safeConnections = ((connections ?? []) as McpConnection[]).map(sanitizeConnection)
+  const safeTools = (tools ?? []) as McpTool[]
+
+  return providerDefinitions.map((provider) => {
+    const connection =
+      safeConnections.find((item) => item.provider === provider.id && item.status === "connected") ??
+      safeConnections.find((item) => item.provider === provider.id) ??
+      null
+    const configured = hasProviderOAuthEnv(provider.id)
+    const isInternal = provider.id === "internal"
+
+    return {
+      provider: provider.id,
+      label: provider.label,
+      description: provider.description,
+      configured: isInternal || configured,
+      status: configured
+        ? connection?.status ?? "not_connected"
+        : isInternal
+          ? connection?.status ?? "not_connected"
+        : "not_configured",
+      connection,
+      tools: safeTools.filter((tool) => tool.provider === provider.id),
+    }
+  })
+})
+
+export const getMcpTools = cache(async (): Promise<McpTool[]> => {
+  const supabase = await createSupabaseServerClient()
+
+  if (!supabase) {
+    return []
+  }
+
+  const { data } = await supabase
+    .from("mcp_tools")
+    .select("*")
+    .order("provider", { ascending: true })
+    .order("is_write", { ascending: true })
+
+  return (data ?? []) as McpTool[]
+})
+
+export async function getConversationToolAudits(
+  conversationId: string
+): Promise<ToolCallAudit[]> {
+  const supabase = await createSupabaseServerClient()
+
+  if (!supabase) {
+    return []
+  }
+
+  const { data } = await supabase
+    .from("tool_call_audit")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+
+  return (data ?? []) as ToolCallAudit[]
+}
 
 export const getFriends = cache(async (): Promise<Friend[]> => {
   const supabase = await createSupabaseServerClient()
@@ -252,4 +390,51 @@ function sanitizeResource(resource: Resource): Resource {
         : "Google Calendar credentials are not configured.",
     },
   }
+}
+
+function sanitizeConnection(connection: McpConnection): McpConnection {
+  return {
+    ...connection,
+    metadata: {
+      email: connection.metadata.email,
+      avatarUrl: connection.metadata.avatarUrl,
+      profileUrl: connection.metadata.profileUrl,
+      teamId: connection.metadata.teamId,
+    },
+  }
+}
+
+async function ensureInternalConnection(userId: string) {
+  const supabase = await createSupabaseServerClient()
+  if (!supabase) {
+    return
+  }
+
+  const { data: existing } = await supabase
+    .from("mcp_connections")
+    .select("id,status")
+    .eq("user_id", userId)
+    .eq("provider", "internal")
+    .maybeSingle()
+
+  if (existing) {
+    if (existing.status !== "connected") {
+      await supabase
+        .from("mcp_connections")
+        .update({ status: "connected", updated_at: new Date().toISOString() })
+        .eq("id", existing.id as string)
+        .eq("user_id", userId)
+    }
+    return
+  }
+
+  await supabase.from("mcp_connections").insert({
+    user_id: userId,
+    provider: "internal",
+    provider_account_id: "agentlink",
+    display_name: "AgentLink first-party tools",
+    status: "connected",
+    scopes: [],
+    metadata: { firstParty: true },
+  })
 }

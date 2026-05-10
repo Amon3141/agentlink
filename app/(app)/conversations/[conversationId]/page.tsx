@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getConversation } from "@/lib/data"
+import { getConversation, getConversationToolAudits } from "@/lib/data"
 import { ChatThread } from "@/components/conversations/chat-thread"
 import { OutcomePanel } from "@/components/conversations/outcome-panel"
 import { PageHeader } from "@/components/layout/page-header"
@@ -11,7 +11,10 @@ export default async function ConversationDetailPage({
   params: Promise<{ conversationId: string }>
 }) {
   const { conversationId } = await params
-  const conversation = await getConversation(conversationId)
+  const [conversation, toolAudits] = await Promise.all([
+    getConversation(conversationId),
+    getConversationToolAudits(conversationId),
+  ])
 
   if (!conversation) {
     notFound()
@@ -25,7 +28,7 @@ export default async function ConversationDetailPage({
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <PaperSurface className="flex flex-col gap-5">
-          <ChatThread conversation={conversation} />
+          <ChatThread conversation={conversation} toolAudits={toolAudits} />
         </PaperSurface>
         <div className="flex flex-col gap-4">
           <OutcomePanel outcome={conversation.outcome} />
@@ -33,6 +36,9 @@ export default async function ConversationDetailPage({
             <h2 className="mb-2 text-lg font-semibold">Transcript details</h2>
             <p className="text-sm text-muted-foreground">
               Status: {conversation.status}. Turns: {conversation.messages.length}.
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Online tool calls: {toolAudits.length}. Every call is validated and logged.
             </p>
           </PaperSurface>
         </div>

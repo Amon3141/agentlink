@@ -2,34 +2,19 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { getSiteUrl } from "@/lib/env"
 import { runNextConversationTurn } from "@/lib/conversations/orchestrator"
+import {
+  availabilityPolicyConfigSchema,
+  projectBriefConfigSchema,
+  sharingRulesConfigSchema,
+  softHoldCalendarConfigSchema,
+  softHoldInputSchema,
+  type AvailabilityPolicyConfig,
+} from "@/lib/resources/schemas"
 import { createSupabaseServerClient, getCurrentUserId } from "@/lib/supabase/server"
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-export async function signInWithMagicLink(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase()
-  const supabase = await createSupabaseServerClient()
-
-  if (!supabase) {
-    redirect("/")
-  }
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
-    },
-  })
-
-  if (error) {
-    redirect("/sign-in?error=magic-link")
-  }
-
-  redirect("/sign-in?sent=1")
-}
 
 export async function signOut() {
   const supabase = await createSupabaseServerClient()
@@ -82,6 +67,10 @@ export async function saveAgent(formData: FormData) {
   }
 
   await syncAgentResources(savedAgentId, formData.getAll("resourceIds").map(String))
+  await syncAgentToolPermissions(
+    savedAgentId,
+    formData.getAll("toolPermissionIds").map(String)
+  )
   revalidatePath("/agents")
   revalidatePath(`/agents/${savedAgentId}`)
   redirect("/agents")
@@ -127,6 +116,212 @@ export async function saveMockResource(formData: FormData) {
 
   revalidatePath("/resources")
   redirect("/resources")
+}
+
+export async function saveAvailabilityPolicyResource(formData: FormData) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    redirect("/resources")
+  }
+
+  const config = parseAvailabilityPolicyForm(formData)
+  const parsed = availabilityPolicyConfigSchema.safeParse(config)
+
+  if (!parsed.success) {
+    redirect("/resources?error=availability-policy")
+  }
+
+  const { error } = await supabase.from("resources").insert({
+    user_id: userId,
+    type: "availability_policy",
+    name: formText(formData, "name", "Availability policy"),
+    config: parsed.data,
+  })
+
+  if (error) {
+    redirect("/resources?error=availability-policy")
+  }
+
+  revalidatePath("/resources")
+  revalidatePath("/agents")
+  redirect("/resources")
+}
+
+export async function saveSoftHoldCalendarResource(formData: FormData) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    redirect("/resources")
+  }
+
+  const parsed = softHoldCalendarConfigSchema.safeParse({
+    timezone: formText(formData, "timezone", "local"),
+    defaultDurationMinutes: formData.get("defaultDurationMinutes"),
+    notes: formText(formData, "notes", ""),
+  })
+
+  if (!parsed.success) {
+    redirect("/resources?error=soft-hold-calendar")
+  }
+
+  const { error } = await supabase.from("resources").insert({
+    user_id: userId,
+    type: "soft_hold_calendar",
+    name: formText(formData, "name", "AgentLink soft holds"),
+    config: parsed.data,
+  })
+
+  if (error) {
+    redirect("/resources?error=soft-hold-calendar")
+  }
+
+  revalidatePath("/resources")
+  revalidatePath("/agents")
+  redirect("/resources")
+}
+
+export async function saveSharingRulesResource(formData: FormData) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    redirect("/resources")
+  }
+
+  const parsed = sharingRulesConfigSchema.safeParse({
+    audience: formText(formData, "audience", "Accepted friends"),
+    rules: formText(formData, "rules", ""),
+  })
+
+  if (!parsed.success) {
+    redirect("/resources?error=sharing-rules")
+  }
+
+  const { error } = await supabase.from("resources").insert({
+    user_id: userId,
+    type: "sharing_rules",
+    name: formText(formData, "name", "Sharing rules"),
+    config: parsed.data,
+  })
+
+  if (error) {
+    redirect("/resources?error=sharing-rules")
+  }
+
+  revalidatePath("/resources")
+  revalidatePath("/agents")
+  redirect("/resources")
+}
+
+export async function saveProjectBriefResource(formData: FormData) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    redirect("/resources")
+  }
+
+  const parsed = projectBriefConfigSchema.safeParse({
+    projectName: formText(formData, "projectName", "Untitled project"),
+    goals: formText(formData, "goals", ""),
+    status: formText(formData, "status", ""),
+    constraints: formText(formData, "constraints", ""),
+    allowedToShare: formText(formData, "allowedToShare", ""),
+  })
+
+  if (!parsed.success) {
+    redirect("/resources?error=project-brief")
+  }
+
+  const { error } = await supabase.from("resources").insert({
+    user_id: userId,
+    type: "project_brief",
+    name: formText(formData, "name", parsed.data.projectName),
+    config: parsed.data,
+  })
+
+  if (error) {
+    redirect("/resources?error=project-brief")
+  }
+
+  revalidatePath("/resources")
+  revalidatePath("/agents")
+  redirect("/resources")
+}
+
+export async function createSoftHold(formData: FormData) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId) {
+    redirect("/resources")
+  }
+
+  const start = parseDateFormValue(formData.get("startAt"))
+  const end = parseDateFormValue(formData.get("endAt"))
+  const parsed = softHoldInputSchema.safeParse({
+    resourceId: String(formData.get("resourceId") ?? ""),
+    title: formText(formData, "title", "Tentative hold"),
+    start,
+    end,
+    notes: formText(formData, "notes", ""),
+  })
+
+  if (!parsed.success) {
+    redirect("/resources?error=soft-hold")
+  }
+
+  const { data: resource } = await supabase
+    .from("resources")
+    .select("id")
+    .eq("id", parsed.data.resourceId)
+    .eq("user_id", userId)
+    .eq("type", "soft_hold_calendar")
+    .single()
+
+  if (!resource) {
+    redirect("/resources?error=soft-hold-resource")
+  }
+
+  const { error } = await supabase.from("soft_holds").insert({
+    user_id: userId,
+    resource_id: parsed.data.resourceId,
+    title: parsed.data.title,
+    start_at: parsed.data.start,
+    end_at: parsed.data.end,
+    notes: parsed.data.notes ?? "",
+    status: "tentative",
+    created_by: "owner",
+  })
+
+  if (error) {
+    redirect("/resources?error=soft-hold")
+  }
+
+  revalidatePath("/resources")
+  redirect("/resources")
+}
+
+export async function cancelSoftHold(formData: FormData) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+  const holdId = String(formData.get("holdId") ?? "")
+
+  if (!supabase || !userId || !uuidPattern.test(holdId)) {
+    redirect("/resources?error=soft-hold-cancel")
+  }
+
+  const { error } = await supabase
+    .from("soft_holds")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .eq("id", holdId)
+    .eq("user_id", userId)
+
+  revalidatePath("/resources")
+  redirect(error ? "/resources?error=soft-hold-cancel" : "/resources")
 }
 
 export async function deleteResource(formData: FormData) {
@@ -328,4 +523,136 @@ async function syncAgentResources(agentId: string, resourceIds: string[]) {
   if (rows.length > 0) {
     await supabase.from("agent_resources").insert(rows)
   }
+}
+
+async function syncAgentToolPermissions(agentId: string, permissionIds: string[]) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId || !uuidPattern.test(agentId)) {
+    return
+  }
+
+  const { data: agent } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("id", agentId)
+    .eq("user_id", userId)
+    .single()
+
+  if (!agent) {
+    return
+  }
+
+  const parsedPermissions = Array.from(new Set(permissionIds))
+    .map((value) => {
+      const [connectionId, toolId] = value.split(":")
+      return { connectionId, toolId }
+    })
+    .filter(
+      ({ connectionId, toolId }) =>
+        uuidPattern.test(connectionId) &&
+        typeof toolId === "string" &&
+        /^[a-z_]+\.[a-z_]+$/.test(toolId)
+    )
+
+  await supabase
+    .from("agent_tool_permissions")
+    .delete()
+    .eq("agent_id", agentId)
+    .eq("user_id", userId)
+
+  if (parsedPermissions.length === 0) {
+    return
+  }
+
+  const connectionIds = Array.from(
+    new Set(parsedPermissions.map((permission) => permission.connectionId))
+  )
+  const toolIds = Array.from(
+    new Set(parsedPermissions.map((permission) => permission.toolId))
+  )
+
+  const [{ data: ownedConnections }, { data: availableTools }] = await Promise.all([
+    supabase
+      .from("mcp_connections")
+      .select("id,provider")
+      .in("id", connectionIds)
+      .eq("user_id", userId)
+      .eq("status", "connected"),
+    supabase
+      .from("mcp_tools")
+      .select("id,provider")
+      .in("id", toolIds),
+  ])
+
+  const connectionById = new Map(
+    (ownedConnections ?? []).map((connection) => [connection.id as string, connection])
+  )
+  const toolById = new Map((availableTools ?? []).map((tool) => [tool.id as string, tool]))
+
+  const rows = parsedPermissions.flatMap(({ connectionId, toolId }) => {
+    const connection = connectionById.get(connectionId)
+    const tool = toolById.get(toolId)
+
+    if (!connection || !tool || connection.provider !== tool.provider) {
+      return []
+    }
+
+    return {
+      agent_id: agentId,
+      connection_id: connectionId,
+      tool_id: toolId,
+      user_id: userId,
+    }
+  })
+
+  if (rows.length > 0) {
+    await supabase.from("agent_tool_permissions").insert(rows)
+  }
+}
+
+function parseAvailabilityPolicyForm(formData: FormData): AvailabilityPolicyConfig {
+  const focusLabel = formText(formData, "focusLabel", "")
+  const focusStart = formText(formData, "focusStart", "")
+  const focusEnd = formText(formData, "focusEnd", "")
+  const focusDays = formData.getAll("focusDays").map(String)
+  const focusBlocks =
+    focusLabel && focusStart && focusEnd && focusDays.length > 0
+      ? [
+          {
+            label: focusLabel,
+            days: focusDays,
+            start: focusStart,
+            end: focusEnd,
+          },
+        ]
+      : []
+
+  return {
+    preferredDays: formData.getAll("preferredDays").map(String),
+    preferredStart: formText(formData, "preferredStart", "") || undefined,
+    preferredEnd: formText(formData, "preferredEnd", "") || undefined,
+    defaultDurationMinutes: Number(formData.get("defaultDurationMinutes") ?? 30),
+    bufferMinutes: Number(formData.get("bufferMinutes") ?? 15),
+    focusBlocks,
+    workPreference: formText(formData, "workPreference", ""),
+    socialPreference: formText(formData, "socialPreference", ""),
+    notes: formText(formData, "notes", ""),
+  } as AvailabilityPolicyConfig
+}
+
+function formText(formData: FormData, key: string, fallback: string) {
+  const value = String(formData.get(key) ?? "").trim()
+  return value || fallback
+}
+
+function parseDateFormValue(value: FormDataEntryValue | null) {
+  const text = String(value ?? "").trim()
+  if (!text) {
+    return ""
+  }
+
+  const date = new Date(text)
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString()
 }

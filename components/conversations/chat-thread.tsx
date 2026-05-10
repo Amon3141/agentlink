@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import type { ConversationWithMessages } from "@/lib/types"
+import type { ConversationWithMessages, ToolCallAudit } from "@/lib/types"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -10,8 +10,10 @@ import { cn } from "@/lib/utils"
 
 export function ChatThread({
   conversation,
+  toolAudits = [],
 }: {
   conversation: ConversationWithMessages
+  toolAudits?: ToolCallAudit[]
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -85,6 +87,23 @@ export function ChatThread({
           </div>
         )
       })}
+      {toolAudits.length > 0 ? (
+        <div className="rounded-2xl border bg-muted/50 p-4 text-xs text-muted-foreground">
+          <p className="mb-2 font-medium text-foreground">Online tool audit</p>
+          <div className="flex flex-col gap-2">
+            {toolAudits.map((audit) => (
+              <div key={audit.id} className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">{audit.status}</Badge>
+                <span>{audit.provider}</span>
+                <span>{audit.tool_id}</span>
+                {typeof audit.result_summary.summary === "string" ? (
+                  <span>{audit.result_summary.summary}</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {conversation.status === "ongoing" ? (
         <div className="flex items-center gap-2 rounded-2xl bg-muted p-4 text-sm text-muted-foreground">
           <span className="size-2 animate-bounce rounded-full bg-primary" />

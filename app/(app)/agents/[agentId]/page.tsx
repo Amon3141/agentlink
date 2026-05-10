@@ -1,5 +1,11 @@
 import { notFound } from "next/navigation"
-import { getAgent, getAgentResourceIds, getResources } from "@/lib/data"
+import {
+  getAgent,
+  getAgentResourceIds,
+  getAgentToolPermissionIds,
+  getProviderConnectionCards,
+  getResources,
+} from "@/lib/data"
 import { AgentForm } from "@/components/agents/agent-form"
 import { AgentTestChat } from "@/components/agents/agent-test-chat"
 import { PageHeader } from "@/components/layout/page-header"
@@ -11,10 +17,18 @@ export default async function AgentEditPage({
   params: Promise<{ agentId: string }>
 }) {
   const { agentId } = await params
-  const [agent, resources, assignedResourceIds] = await Promise.all([
+  const [
+    agent,
+    resources,
+    assignedResourceIds,
+    providerConnectionCards,
+    assignedToolPermissionIds,
+  ] = await Promise.all([
     getAgent(agentId),
     getResources(),
     getAgentResourceIds(agentId),
+    getProviderConnectionCards(),
+    getAgentToolPermissionIds(agentId),
   ])
 
   if (!agent) {
@@ -32,6 +46,8 @@ export default async function AgentEditPage({
           agent={agent}
           resources={resources}
           assignedResourceIds={assignedResourceIds}
+          providerConnectionCards={providerConnectionCards}
+          assignedToolPermissionIds={assignedToolPermissionIds}
         />
         <div className="flex flex-col gap-6">
           <PaperSurface>
@@ -40,6 +56,11 @@ export default async function AgentEditPage({
               This agent currently has access to {assignedResourceIds.length} owner-approved
               resource{assignedResourceIds.length === 1 ? "" : "s"}. Tokens and private
               resource details stay server-side.
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              It also has {assignedToolPermissionIds.length} online tool
+              permission{assignedToolPermissionIds.length === 1 ? "" : "s"} for connected
+              providers.
             </p>
           </PaperSurface>
           <AgentTestChat agent={agent} />

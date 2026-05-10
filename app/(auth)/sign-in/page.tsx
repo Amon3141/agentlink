@@ -1,9 +1,26 @@
 import { SparklesIcon } from "lucide-react"
-import { signInWithMagicLink } from "@/lib/actions"
+import { SignInWithGoogleButton } from "@/components/sign-in-with-google-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
+
+function signInErrorMessage(code: string | undefined) {
+  switch (code) {
+    case "oauth":
+      return "Google sign-in could not be started. Try again or use email below."
+    case "rate-limit":
+      return "Too many magic-link emails were sent. Wait a little, or sign in with Google."
+    case "auth-callback":
+      return "We could not finish signing you in. Try Google or request a new magic link."
+    case "missing-code":
+      return "That sign-in link was incomplete. Start again from this page."
+    case "magic-link":
+    default:
+      return "Email sign-in failed. Try Google or request a fresh magic link."
+  }
+}
 
 export default async function SignInPage({
   searchParams,
@@ -21,33 +38,45 @@ export default async function SignInPage({
           </div>
           <CardTitle>Welcome to AgentLink</CardTitle>
           <CardDescription>
-            Sign in with a magic link and let your little agent companions help coordinate life.
+            Sign in with Google or email. Your agents keep coordination in sync.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {error ? (
             <p className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
-              Sign-in could not be completed. Please request a fresh magic link.
+              {signInErrorMessage(error)}
             </p>
-          ) : sent ? (
+          ) : null}
+          {sent ? (
             <p className="rounded-lg bg-secondary p-4 text-sm">
               Magic link sent. Check your inbox to continue.
             </p>
-          ) : (
-            <form action={signInWithMagicLink}>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <Input id="email" name="email" type="email" required placeholder="you@example.com" />
-                  <FieldDescription>Demo mode opens the app without Supabase credentials.</FieldDescription>
-                </Field>
-                <Button type="submit" size="lg">
-                  <SparklesIcon data-icon="inline-start" />
-                  Send magic link
-                </Button>
-              </FieldGroup>
-            </form>
-          )}
+          ) : null}
+          {!sent ? (
+            <>
+              <SignInWithGoogleButton />
+              <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="whitespace-nowrap text-xs uppercase text-muted-foreground">Or use email</span>
+                <Separator className="flex-1" />
+              </div>
+              <form action="/auth/magic-link" method="post">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input id="email" name="email" type="email" required placeholder="you@example.com" />
+                    <FieldDescription>
+                      We will email you a one-time link (subject to send limits).
+                    </FieldDescription>
+                  </Field>
+                  <Button type="submit" size="lg" className="w-full">
+                    <SparklesIcon data-icon="inline-start" />
+                    Send magic link
+                  </Button>
+                </FieldGroup>
+              </form>
+            </>
+          ) : null}
         </CardContent>
       </Card>
     </main>

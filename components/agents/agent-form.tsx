@@ -1,4 +1,4 @@
-import type { Agent, Resource } from "@/lib/types"
+import type { Agent, ProviderConnectionCard, Resource } from "@/lib/types"
 import { deleteAgent, saveAgent } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,12 +12,20 @@ export function AgentForm({
   agent,
   resources = [],
   assignedResourceIds = [],
+  providerConnectionCards = [],
+  assignedToolPermissionIds = [],
 }: {
   agent?: Agent | null
   resources?: Resource[]
   assignedResourceIds?: string[]
+  providerConnectionCards?: ProviderConnectionCard[]
+  assignedToolPermissionIds?: string[]
 }) {
   const assigned = new Set(assignedResourceIds)
+  const assignedTools = new Set(assignedToolPermissionIds)
+  const connectedProviders = providerConnectionCards.filter(
+    (card) => card.connection && card.status === "connected"
+  )
 
   return (
     <Card className="sketch-border bg-card/95">
@@ -89,12 +97,69 @@ export function AgentForm({
                         value={resource.id}
                         defaultChecked={assigned.has(resource.id)}
                       />
-                      <span>{resource.name}</span>
+                      <span>
+                        {resource.name}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {resourceLabel(resource.type)}
+                        </span>
+                      </span>
                     </label>
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Add a mock resource first, then attach it here.
+                    Add a resource first, then attach it here.
+                  </p>
+                )}
+              </div>
+            </Field>
+            <Field>
+              <FieldLabel>Online tool permissions</FieldLabel>
+              <FieldDescription>
+                These MCP-style tools are available only to this agent and only after validation.
+              </FieldDescription>
+              <div className="flex flex-col gap-3 rounded-2xl border bg-muted/50 p-3">
+                {connectedProviders.length > 0 ? (
+                  connectedProviders.map((card) => {
+                    const connection = card.connection
+
+                    if (!connection) {
+                      return null
+                    }
+
+                    return (
+                      <div key={card.provider} className="rounded-2xl bg-card/70 p-3">
+                        <div className="mb-2">
+                          <p className="text-sm font-medium">{card.label}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {connection.display_name}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {card.tools.map((tool) => {
+                            const value = `${connection.id}:${tool.id}`
+                            return (
+                              <label key={tool.id} className="flex items-start gap-3 text-sm">
+                                <Checkbox
+                                  name="toolPermissionIds"
+                                  value={value}
+                                  defaultChecked={assignedTools.has(value)}
+                                />
+                                <span>
+                                  {tool.name}
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    {tool.is_write ? "write approval" : "read-only"}
+                                  </span>
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Connect GitHub, Google Calendar, Gmail, or Slack on the Resources page first.
                   </p>
                 )}
               </div>
@@ -113,4 +178,17 @@ export function AgentForm({
       </CardContent>
     </Card>
   )
+}
+
+function resourceLabel(type: Resource["type"]) {
+  const labels: Record<Resource["type"], string> = {
+    mock: "mock",
+    google_calendar: "Google Calendar",
+    availability_policy: "availability policy",
+    soft_hold_calendar: "soft holds",
+    sharing_rules: "sharing rules",
+    project_brief: "project brief",
+  }
+
+  return labels[type]
 }

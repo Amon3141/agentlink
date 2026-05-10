@@ -17,17 +17,28 @@ Copy `.env.example` to `.env.local` and fill in real values:
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-publishable-or-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 CLOD_ENDPOINT=https://api.clod.io/v1
 CLOD_API_KEY=your-clod-api-key
 CLOD_MODEL=DeepSeek V3
 ```
 
-Optional Google Calendar variables:
+Optional provider OAuth variables:
 
 ```bash
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_REDIRECT_URI=http://localhost:3000/api/resources/github/callback
+
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+GOOGLE_CALENDAR_REDIRECT_URI=http://localhost:3000/api/resources/google-calendar/callback
 GOOGLE_REDIRECT_URI=http://localhost:3000/api/resources/google-calendar/callback
+GMAIL_REDIRECT_URI=http://localhost:3000/api/resources/gmail/callback
+
+SLACK_CLIENT_ID=
+SLACK_CLIENT_SECRET=
+SLACK_REDIRECT_URI=http://localhost:3000/api/resources/slack/callback
 ```
 
 When Supabase env vars are present, app routes require a real authenticated Supabase session. Without Supabase env vars, the app keeps a local demo mode for UI exploration. In production, `CLOD_ENDPOINT` is required.
@@ -42,12 +53,57 @@ Apply `supabase/migrations/0001_agentlink_core.sql` to the Supabase project. The
 - profile bootstrap trigger on `auth.users`
 - RPC helpers for idempotent conversation turn claiming/completion/failure
 
+Apply `supabase/migrations/0002_mcp_provider_foundation.sql` after the core migration to add MCP-style provider tables:
+
+- `mcp_connections`, `mcp_tools`, `agent_tool_permissions`, and `tool_call_audit`
+- private `mcp_connection_secrets` token storage
+- RLS policies for user-owned connection metadata, agent-scoped tool grants, and participant-visible audit rows
+- seeded MVP tools for GitHub, Google Calendar, Gmail, and Slack
+
+Apply `supabase/migrations/0003_custom_resources_soft_holds.sql` after the provider foundation to add first-party scheduling resources:
+
+- `availability_policy`, `soft_hold_calendar`, `sharing_rules`, and `project_brief` resource types
+- `soft_holds` with owner-only RLS and FK checks back to owner-owned soft-hold calendar resources
+- an `internal` provider with AgentLink tools for checking soft-hold availability and creating tentative holds
+
 After applying the migration, verify the Supabase Dashboard Auth URL settings include:
 
 - Site URL matching `NEXT_PUBLIC_SITE_URL`
 - Redirect URL: `${NEXT_PUBLIC_SITE_URL}/auth/callback`
 
 Magic-link sign-in creates a profile automatically through the trigger. Users can then search friends by exact email or username.
+
+## Provider OAuth Setup
+
+Register callback URLs in each provider dashboard:
+
+```text
+${NEXT_PUBLIC_SITE_URL}/api/resources/github/callback
+${NEXT_PUBLIC_SITE_URL}/api/resources/google-calendar/callback
+${NEXT_PUBLIC_SITE_URL}/api/resources/gmail/callback
+${NEXT_PUBLIC_SITE_URL}/api/resources/slack/callback
+```
+
+Recommended MVP scopes:
+
+- GitHub: `repo`
+- Google Calendar: `openid email profile https://www.googleapis.com/auth/calendar.readonly`
+- Gmail: `openid email profile https://www.googleapis.com/auth/gmail.readonly`
+- Slack: `search:read`
+
+Write tools such as GitHub comments, tentative calendar events, Gmail drafts, and Slack posts remain agent-permission gated and should only be enabled with matching write scopes. OAuth tokens and refresh tokens are stored server-side in the private schema and are never sent to the browser or Clod prompts.
+
+## First-Party Scheduling Resources
+
+AgentLink includes custom owner-defined resources so the core scheduling story works without external OAuth:
+
+- **Availability Policy** captures preferred days/times, default meeting duration, buffer time, focus blocks, work/social preferences, and freeform notes. Agents receive a concise policy summary instead of raw calendar details.
+- **Soft Hold Calendar** is an internal AgentLink calendar for tentative holds. It is separate from Google Calendar and never pretends to be Google availability when a provider call fails.
+- **Sharing Rules** and **Project Brief** provide lightweight structured context for privacy boundaries and project framing.
+
+Agents can only use a soft-hold calendar when the owner attaches that resource to the agent and grants the matching `internal.*` tool permission. Clod may request a structured tool intent, but only the server validates ownership, agent attachment, tool permission, and input shape before creating a hold. Tool results and audit rows are sanitized; OAuth tokens, refresh tokens, provider credentials, email bodies, Slack raw logs, and private calendar details are never sent to the browser or Clod.
+
+In the Mina/Ken story, Mochi can summarize: “Mina appears available Tuesday 6:00-6:30pm,” based on an attached availability policy and soft-hold calendar. If `internal.create_soft_hold` is approved, the server creates a tentative AgentLink hold and writes `tool_call_audit`; otherwise Mochi can recommend the time without mutating data.
 
 ## Run
 
@@ -62,7 +118,7 @@ npm run build
 
 - Friends support outgoing requests, incoming accept/reject, cancellation, accepted lists, and accepted-friend public agent discovery.
 - Agents can be created, edited, deleted, tested through Clod, and assigned owner-owned resources.
-- Mock resources are fully functional. Google Calendar stays in a clear not-configured state unless OAuth credentials are supplied.
+- Mock resources and first-party scheduling resources are fully functional. Google Calendar stays in a clear not-configured state unless OAuth credentials are supplied.
 - Conversation polling is single-flight on the client, while Supabase RPC turn claims prevent duplicate Clod calls from polling races.
 # AgentLink
 

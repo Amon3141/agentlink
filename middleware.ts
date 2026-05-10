@@ -38,7 +38,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  if (!user && !request.nextUrl.pathname.startsWith("/sign-in")) {
+  const path = request.nextUrl.pathname
+  const isPublicAuth =
+    path.startsWith("/sign-in") || path === "/auth/magic-link"
+
+  if (!user && !isPublicAuth) {
     const url = request.nextUrl.clone()
     url.pathname = "/sign-in"
     return NextResponse.redirect(url)
