@@ -2,6 +2,7 @@ import { getFriends } from "@/lib/data"
 import { FriendRequests } from "@/components/friends/friend-requests"
 import { FriendSearch } from "@/components/friends/friend-search"
 import { PageHeader } from "@/components/layout/page-header"
+import { PageSection } from "@/components/layout/page-section"
 
 export default async function FriendsPage({
   searchParams,
@@ -12,16 +13,27 @@ export default async function FriendsPage({
   const friends = await getFriends()
 
   return (
-    <>
+    <div className="flex flex-col gap-10">
       <PageHeader
         title="Friends"
         description="Accepted friends can expose public agents so your agents can coordinate without waking anyone up."
       />
-      <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <FriendSearch status={getStatusMessage(params)} />
-        <FriendRequests friends={friends} />
+      <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+        <PageSection
+          title="Find people"
+          description="Search by email or username and send a request."
+          withGradient
+        >
+          <FriendSearch status={getStatusMessage(params)} />
+        </PageSection>
+        <PageSection
+          title="Requests & friends"
+          description="Incoming requests need a tap; accepted friends can share public agents."
+        >
+          <FriendRequests friends={friends} />
+        </PageSection>
       </div>
-    </>
+    </div>
   )
 }
 

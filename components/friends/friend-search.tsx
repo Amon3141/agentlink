@@ -9,15 +9,21 @@ export function FriendSearch({ status }: { status?: string }) {
   return (
     <Card className="sketch-border bg-card/95">
       <CardHeader>
-        <SearchIcon />
-        <CardTitle>Find a friend</CardTitle>
-        <CardDescription>Search by email or username and send a request.</CardDescription>
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/50">
+            <SearchIcon className="size-5 text-primary" aria-hidden />
+          </span>
+          <div>
+            <CardTitle>Find a friend</CardTitle>
+            <CardDescription>Search by email or username and send a request.</CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {status ? (
-          <p className="mb-4 rounded-2xl bg-secondary p-3 text-sm">{status}</p>
+          <p className="mb-4 rounded-2xl bg-secondary px-4 py-3 text-sm">{status}</p>
         ) : null}
-        <form action={sendFriendRequest}>
+        <form action={sendFriendRequest} className={status ? "border-t border-border/60 pt-4" : undefined}>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="query">Email or username</FieldLabel>

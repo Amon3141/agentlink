@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { BotIcon, LockIcon, SparklesIcon, UsersIcon } from "lucide-react"
+import { BotIcon, LockIcon, UsersIcon } from "lucide-react"
 import type { Agent } from "@/lib/types"
+import { AppSparklesIcon } from "@/components/icons/app-sparkles-icon"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,9 +37,9 @@ export function AgentCard({
       <CardContent>
         <p className="line-clamp-3 text-sm text-muted-foreground">{agent.system_prompt}</p>
       </CardContent>
-      <CardFooter className="text-xs text-muted-foreground">
-        <SparklesIcon data-icon="inline-start" />
-        Ready to exchange context
+      <CardFooter className="gap-2.5 text-xs text-muted-foreground">
+        <AppSparklesIcon />
+        <span>Ready to exchange context</span>
       </CardFooter>
     </Card>
   )

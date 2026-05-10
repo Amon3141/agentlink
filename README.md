@@ -73,6 +73,18 @@ After applying the migration, verify the Supabase Dashboard Auth URL settings in
 
 Magic-link sign-in creates a profile automatically through the trigger. Users can then search friends by exact email or username.
 
+### Hackathon demo data
+
+With `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`, run:
+
+```bash
+npm run seed:hackathon
+```
+
+This creates demo auth users (`hana_demo`, `ren_demo`, `maya_demo` at `@agentlink.invalid`), friends rows, agents, resources, and a sample conversation for the **primary** profile (`amon_kizawa` / `amon_kizwa`, or `HACKATHON_OWNER_*`). It also seeds a **partner** profile (`kizawaamon@gmail.com` / username `kizawaamon`, or `HACKATHON_PARTNER_*`) with its own agents and resources, and an **accepted friend link** between the two when both exist.
+
+Optional MCP and soft-hold rows are skipped if migrations `0002` / `0003` are not applied yet.
+
 ## Provider OAuth Setup
 
 Register callback URLs in each provider dashboard:

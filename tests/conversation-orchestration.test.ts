@@ -5,7 +5,10 @@ import { buildTurnPrompt } from "@/lib/conversations/prompt-builder"
 import { getProviderTool } from "@/lib/providers/registry"
 import { availabilityPolicyConfigSchema, softHoldInputSchema } from "@/lib/resources/schemas"
 import { sanitizeInput } from "@/lib/providers/tool-runner"
-import { parseClodAgentResponse } from "@/lib/validators/clod-response"
+import {
+  parseClodAgentResponse,
+  resolveClodAgentResponse,
+} from "@/lib/validators/clod-response"
 import type { Resource } from "@/lib/types"
 
 describe("conversation orchestration helpers", () => {
@@ -48,25 +51,45 @@ describe("conversation orchestration helpers", () => {
     expect(parsed.toolRequest?.toolId).toBe("google_calendar.check_availability")
   })
 
-  it("rejects malformed Clod JSON", () => {
+  it("parses Clod output wrapped in markdown fences", () => {
+    const raw = 'Sure:\n```json\n{"message":"Tuesday works.","thinkIsTerminated":true,"thinkIsTerminatedReason":"Done."}\n```'
+    const resolved = resolveClodAgentResponse(raw)
+    expect(resolved.message).toBe("Tuesday works.")
+    expect(resolved.thinkIsTerminated).toBe(true)
+  })
+
+  it("defaults missing termination flags when JSON is otherwise valid", () => {
+    const parsed = parseClodAgentResponse({
+      message: "Still negotiating.",
+    })
+
+    expect(parsed.thinkIsTerminated).toBe(false)
+    expect(parsed.thinkIsTerminatedReason).toBe("")
+  })
+
+  it("drops invalid tool requests instead of failing the turn", () => {
+    const parsed = parseClodAgentResponse({
+      message: "Bad tool.",
+      thinkIsTerminated: false,
+      thinkIsTerminatedReason: "",
+      toolRequest: {
+        toolId: "calendar/delete_everything",
+        connectionId: "not-a-uuid",
+        input: {},
+      },
+    })
+
+    expect(parsed.toolRequest).toBeUndefined()
+  })
+
+  it("rejects unrecoverable Clod strings", () => {
     expect(() => parseClodAgentResponse("{ nope")).toThrow("invalid JSON")
-    expect(() =>
-      parseClodAgentResponse({
-        message: "Missing termination flag.",
-      })
-    ).toThrow("malformed JSON")
-    expect(() =>
-      parseClodAgentResponse({
-        message: "Bad tool.",
-        thinkIsTerminated: false,
-        thinkIsTerminatedReason: "",
-        toolRequest: {
-          toolId: "calendar/delete_everything",
-          connectionId: "not-a-uuid",
-          input: {},
-        },
-      })
-    ).toThrow("malformed JSON")
+  })
+
+  it("falls back to plaintext via resolveClodAgentResponse", () => {
+    const resolved = resolveClodAgentResponse("Hello — no JSON here.")
+    expect(resolved.message).toContain("Hello")
+    expect(resolved.thinkIsTerminated).toBe(false)
   })
 
   it("rejects malformed provider tool inputs", () => {

@@ -1,6 +1,5 @@
 import { getProviderConnectionCards, getResources, getSoftHolds } from "@/lib/data"
-import { PageHeader } from "@/components/layout/page-header"
-import { ResourceBoard } from "@/components/resources/resource-board"
+import { ResourcesPageContent } from "@/components/resources/resources-page-content"
 
 export default async function ResourcesPage() {
   const [resources, providerCards, softHolds] = await Promise.all([
@@ -10,12 +9,10 @@ export default async function ResourcesPage() {
   ])
 
   return (
-    <>
-      <PageHeader
-        title="Resources"
-        description="Resources are owner-approved personal context. Agents receive concise summaries, not unlimited access."
-      />
-      <ResourceBoard resources={resources} providerCards={providerCards} softHolds={softHolds} />
-    </>
+    <ResourcesPageContent
+      resources={resources}
+      providerCards={providerCards}
+      softHolds={softHolds}
+    />
   )
 }

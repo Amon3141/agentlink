@@ -43,22 +43,19 @@ export async function runNextConversationTurn(conversationId: string) {
     return { status: "failed", message: null }
   }
 
-  const { data: conversation } = await supabase
-    .from("conversations")
-    .select("*")
-    .eq("id", conversationId)
-    .single()
+  const [{ data: conversation }, { data: messages }] = await Promise.all([
+    supabase.from("conversations").select("*").eq("id", conversationId).single(),
+    supabase
+      .from("conversation_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .eq("status", "completed")
+      .order("turn_number", { ascending: true }),
+  ])
 
   if (!conversation || conversation.status !== "ongoing") {
     return { status: conversation?.status ?? "missing", message: null }
   }
-
-  const { data: messages } = await supabase
-    .from("conversation_messages")
-    .select("*")
-    .eq("conversation_id", conversationId)
-    .eq("status", "completed")
-    .order("turn_number", { ascending: true })
 
   const history = (messages ?? []) as ConversationMessage[]
   const nextTurn = claim.turn_number
@@ -84,9 +81,10 @@ export async function runNextConversationTurn(conversationId: string) {
   const agentResources = ((resources ?? [])
     .flatMap((row) => row.resources ?? [])
     .filter(Boolean) as unknown as Resource[])
-  const enrichedResources = await attachSoftHoldSummaries(agentResources, (agent as Agent).user_id)
-
-  const approvedTools = await getApprovedToolSummaries(senderAgentId, (agent as Agent).user_id)
+  const [enrichedResources, approvedTools] = await Promise.all([
+    attachSoftHoldSummaries(agentResources, (agent as Agent).user_id),
+    getApprovedToolSummaries(senderAgentId, (agent as Agent).user_id),
+  ])
   const systemPrompt = buildAgentSystemPrompt({
     agent: agent as Agent,
     purpose: conversation.purpose,

@@ -1,8 +1,16 @@
-import { parseClodAgentResponse } from "@/lib/validators/clod-response"
+import {
+  CLOD_JSON_REPAIR_USER_PROMPT,
+  normalizeClodRawToString,
+  resolveClodAgentResponse,
+  tryParseStructuredClodResponse,
+} from "@/lib/validators/clod-response"
 import type { ClodAgentResponse } from "@/lib/types"
 
 const maxAttempts = 3
-const requestTimeoutMs = 20000
+/** Must cover primary completion plus one JSON repair round-trip. */
+const requestTimeoutMs = 55000
+
+type ChatMessage = { role: "system" | "user" | "assistant"; content: string }
 
 export async function callClodAgent(
   prompt: string,
@@ -33,37 +41,34 @@ export async function callClodAgent(
     const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
 
     try {
-      const response = await fetch(getChatCompletionsEndpoint(endpoint), {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(token ? { authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
+      const messages: ChatMessage[] = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ]
+
+      const firstText = await fetchClodAssistantText(
+        {
+          endpoint,
+          token,
           model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt },
-          ],
+          messages,
           temperature: 0.4,
-          max_completion_tokens: 600,
-        }),
+          signal: controller.signal,
+        }
+      )
+
+      const resolved = await finalizeClodAssistantText({
+        endpoint,
+        token,
+        model,
+        systemPrompt,
+        userPrompt: prompt,
+        assistantText: firstText,
         signal: controller.signal,
       })
 
-      if (!response.ok) {
-        const retryable = response.status === 429 || response.status >= 500
-        const message = `Clod request failed with ${response.status}`
-
-        if (!retryable || attempt === maxAttempts) {
-          throw new Error(message)
-        }
-
-        lastError = new Error(message)
-      } else {
-        const body = await response.json()
-        return parseClodAgentResponse(extractAssistantContent(body))
-      }
+      clearTimeout(timeout)
+      return resolved
     } catch (error) {
       lastError =
         error instanceof Error
@@ -77,6 +82,92 @@ export async function callClodAgent(
   }
 
   throw lastError ?? new Error("Clod request failed.")
+}
+
+async function finalizeClodAssistantText({
+  endpoint,
+  token,
+  model,
+  systemPrompt,
+  userPrompt,
+  assistantText,
+  signal,
+}: {
+  endpoint: string
+  token: string | undefined
+  model: string
+  systemPrompt: string
+  userPrompt: string
+  assistantText: string
+  signal: AbortSignal
+}): Promise<ClodAgentResponse> {
+  const firstStructured = tryParseStructuredClodResponse(assistantText)
+  if (firstStructured) {
+    return firstStructured
+  }
+
+  if (!assistantText.trim()) {
+    return resolveClodAgentResponse("")
+  }
+
+  const repairText = await fetchClodAssistantText({
+    endpoint,
+    token,
+    model,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+      { role: "assistant", content: assistantText.slice(0, 12000) },
+      { role: "user", content: CLOD_JSON_REPAIR_USER_PROMPT },
+    ],
+    temperature: 0.15,
+    signal,
+  })
+
+  const structured = tryParseStructuredClodResponse(repairText)
+  if (structured) {
+    return structured
+  }
+
+  return resolveClodAgentResponse(repairText)
+}
+
+async function fetchClodAssistantText({
+  endpoint,
+  token,
+  model,
+  messages,
+  temperature,
+  signal,
+}: {
+  endpoint: string
+  token: string | undefined
+  model: string
+  messages: ChatMessage[]
+  temperature: number
+  signal: AbortSignal
+}): Promise<string> {
+  const response = await fetch(getChatCompletionsEndpoint(endpoint), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature,
+      max_completion_tokens: 600,
+    }),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`Clod request failed with ${response.status}`)
+  }
+
+  const body = await response.json()
+  return normalizeClodRawToString(extractAssistantContent(body)).trim()
 }
 
 function demoAgentReply(prompt: string) {
@@ -111,6 +202,12 @@ function extractAssistantContent(body: unknown) {
   ) {
     const content = body.choices[0]?.message?.content
     if (typeof content === "string") {
+      return content
+    }
+    if (Array.isArray(content)) {
+      return content
+    }
+    if (content && typeof content === "object") {
       return content
     }
   }

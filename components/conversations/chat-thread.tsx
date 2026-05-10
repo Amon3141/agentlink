@@ -25,7 +25,9 @@ export function ChatThread({
       return
     }
 
-    const timer = window.setInterval(() => {
+    const pollIntervalMs = 1000
+
+    function runNextTurn() {
       if (inFlightRef.current || document.visibilityState === "hidden") {
         return
       }
@@ -46,7 +48,10 @@ export function ChatThread({
           inFlightRef.current = false
         }
       })
-    }, 2500)
+    }
+
+    runNextTurn()
+    const timer = window.setInterval(runNextTurn, pollIntervalMs)
 
     return () => window.clearInterval(timer)
   }, [conversation.id, conversation.status, router])
@@ -68,7 +73,7 @@ export function ChatThread({
             {mine ? <AgentAvatar agent={agent} /> : null}
             <Card
               className={cn(
-                "max-w-[78%] rounded-3xl p-4",
+                "max-w-[78%] rounded-xl p-4",
                 mine ? "bg-card/95" : "bg-secondary/95"
               )}
             >
@@ -78,7 +83,7 @@ export function ChatThread({
               </div>
               <p className="text-sm leading-6">{message.content}</p>
               {message.termination_reason ? (
-                <p className="mt-3 rounded-2xl bg-accent p-3 text-xs">
+                <p className="mt-3 rounded-xl bg-accent p-3 text-xs">
                   {message.termination_reason}
                 </p>
               ) : null}

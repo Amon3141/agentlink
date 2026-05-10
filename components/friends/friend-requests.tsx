@@ -1,5 +1,6 @@
 import type { Friend } from "@/lib/types"
 import { acceptFriendRequest, rejectFriendRequest } from "@/lib/actions"
+import { cn } from "@/lib/utils"
 import { AgentCard } from "@/components/ui/agent-card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +18,7 @@ export function FriendRequests({ friends }: { friends: Friend[] }) {
   const accepted = friends.filter((friend) => friend.status === "accepted")
 
   return (
-    <div className="grid gap-5">
+    <div className="flex flex-col gap-6">
       <FriendSection title="Incoming requests" friends={incoming} empty="No one is waiting on you right now." />
       <FriendSection title="Outgoing requests" friends={outgoing} empty="No sent requests are pending." />
       <FriendSection title="Accepted friends" friends={accepted} empty="Add a friend to see their public agents here." />
@@ -35,12 +36,12 @@ function FriendSection({
   empty: string
 }) {
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">{title}</h2>
+    <section className="flex flex-col gap-3 rounded-2xl border bg-muted/15 p-4">
+      <h3 className="text-base font-semibold tracking-tight">{title}</h3>
       {friends.length > 0 ? (
         friends.map((friend) => <FriendCard key={friend.id} friend={friend} />)
       ) : (
-        <Empty className="bg-card/80">
+        <Empty className="border border-dashed border-border/60 bg-card/60">
           <EmptyHeader>
             <EmptyTitle>{empty}</EmptyTitle>
             <EmptyDescription>
@@ -73,7 +74,14 @@ function FriendCard({ friend }: { friend: Friend }) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent
+        className={cn(
+          "flex flex-col gap-4",
+          friend.status === "accepted" &&
+            friend.public_agents.length > 0 &&
+            "pb-8"
+        )}
+      >
         {friend.status === "pending" && friend.direction === "incoming" ? (
           <div className="flex gap-2">
             <form action={acceptFriendRequest}>

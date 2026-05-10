@@ -1,4 +1,6 @@
--- Optional local demo seed. Replace UUIDs with auth.users IDs in a real Supabase project.
+-- Optional local SQL seed (requires matching auth.users ids). Prefer the real project seed:
+--   npm run seed:hackathon
+-- (uses the service role; see README "Hackathon demo data".)
 insert into public.profiles (id, username, email)
 values
   ('00000000-0000-0000-0000-000000000001', 'amon', 'amon@example.com'),

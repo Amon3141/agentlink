@@ -1,4 +1,4 @@
-import { SparklesIcon } from "lucide-react"
+import { AppSparklesIcon } from "@/components/icons/app-sparkles-icon"
 import { SignInWithGoogleButton } from "@/components/sign-in-with-google-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +34,7 @@ export default async function SignInPage({
       <Card className="sketch-border w-full max-w-md bg-card/95">
         <CardHeader>
           <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-accent">
-            <SparklesIcon />
+            <AppSparklesIcon className="size-6" />
           </div>
           <CardTitle>Welcome to AgentLink</CardTitle>
           <CardDescription>
@@ -70,7 +70,7 @@ export default async function SignInPage({
                     </FieldDescription>
                   </Field>
                   <Button type="submit" size="lg" className="w-full">
-                    <SparklesIcon data-icon="inline-start" />
+                    <AppSparklesIcon data-icon="inline-start" />
                     Send magic link
                   </Button>
                 </FieldGroup>

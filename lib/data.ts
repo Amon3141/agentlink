@@ -10,6 +10,7 @@ import type {
   ConversationMessage,
   ConversationWithMessages,
   Friend,
+  FriendProfile,
   McpConnection,
   McpTool,
   ProviderConnectionCard,
@@ -24,6 +25,60 @@ type FriendRow = {
   friend_id: string
   status: "pending" | "accepted"
 }
+
+export const getCurrentUserProfile = cache(async (): Promise<FriendProfile> => {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || userId === "demo-user") {
+    return {
+      id: "demo-user",
+      username: "Explorer",
+      email: "",
+      avatar_url: null,
+    }
+  }
+
+  if (!userId) {
+    return {
+      id: "guest",
+      username: "Guest",
+      email: "",
+      avatar_url: null,
+    }
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, username, email, avatar_url")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (profile) {
+    return profile as FriendProfile
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    const email = user.email ?? ""
+    return {
+      id: user.id,
+      username: email ? (email.split("@")[0] ?? "You") : "You",
+      email,
+      avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    }
+  }
+
+  return {
+    id: userId,
+    username: "You",
+    email: "",
+    avatar_url: null,
+  }
+})
 
 export const getAgents = cache(async (): Promise<Agent[]> => {
   const supabase = await createSupabaseServerClient()

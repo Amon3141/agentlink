@@ -88,7 +88,7 @@ export function AgentForm({
               <FieldDescription>
                 These resources are injected into this agent&apos;s Clod prompt during turns.
               </FieldDescription>
-              <div className="flex flex-col gap-3 rounded-2xl border bg-muted/50 p-3">
+              <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-3">
                 {resources.length > 0 ? (
                   resources.map((resource) => (
                     <label key={resource.id} className="flex items-center gap-3 text-sm">
