@@ -21,9 +21,9 @@ export function SoftHoldsSection({
   return (
     <section className="flex flex-col gap-3">
       <header>
-        <h2 className="text-xl font-semibold tracking-tight">Scheduling and holds</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Scheduling and plans</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Tentative holds stay inside AgentLink until you promote them to your real calendar.
+          Tentative plans stay inside AgentLink until you promote them to your real calendar.
         </p>
       </header>
       <Card className="sketch-border bg-card/95">
@@ -33,9 +33,9 @@ export function SoftHoldsSection({
               <CalendarClockIcon className="size-6 text-primary" aria-hidden />
             </span>
             <div>
-              <CardTitle>Soft holds</CardTitle>
+              <CardTitle>Calendar plans</CardTitle>
               <CardDescription>
-                Place holds on a soft hold calendar; they stay separate from OAuth calendars until you
+                Place plans on your AgentLink calendar; they stay separate from OAuth calendars until you
                 connect tools.
               </CardDescription>
             </div>
@@ -43,14 +43,14 @@ export function SoftHoldsSection({
         </CardHeader>
         <CardContent className="grid gap-6 lg:grid-cols-[1fr_1fr]">
           <div>
-            <h3 className="mb-3 text-sm font-medium text-foreground">Create a hold</h3>
+            <h3 className="mb-3 text-sm font-medium text-foreground">Create a plan</h3>
             {calendars.length > 0 ? (
               <form action={createSoftHold}>
                 <FieldGroup>
                   <Field>
-                    <FieldLabel htmlFor="hold-resource">Calendar</FieldLabel>
+                    <FieldLabel htmlFor="plan-resource">Calendar</FieldLabel>
                     <select
-                      id="hold-resource"
+                      id="plan-resource"
                       name="resourceId"
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                       required
@@ -63,30 +63,30 @@ export function SoftHoldsSection({
                     </select>
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="hold-title">Title</FieldLabel>
-                    <Input id="hold-title" name="title" required placeholder="Landing page review" />
+                    <FieldLabel htmlFor="plan-title">Title</FieldLabel>
+                    <Input id="plan-title" name="title" required placeholder="Landing page review" />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="hold-start">Start</FieldLabel>
-                    <Input id="hold-start" name="startAt" type="datetime-local" required />
+                    <FieldLabel htmlFor="plan-start">Start</FieldLabel>
+                    <Input id="plan-start" name="startAt" type="datetime-local" required />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="hold-end">End</FieldLabel>
-                    <Input id="hold-end" name="endAt" type="datetime-local" required />
+                    <FieldLabel htmlFor="plan-end">End</FieldLabel>
+                    <Input id="plan-end" name="endAt" type="datetime-local" required />
                   </Field>
-                  <Button type="submit">Create hold</Button>
+                  <Button type="submit">Create plan</Button>
                 </FieldGroup>
               </form>
             ) : (
               <p className="rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
-                Your built-in soft hold calendar should appear under Your context. If it is missing, refresh
-                the page or confirm database migrations are applied.
+                Your built-in calendar should appear under Your context. If it is missing, refresh the page
+                or confirm database migrations are applied.
               </p>
             )}
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-medium text-foreground">Active holds</h3>
+            <h3 className="mb-3 text-sm font-medium text-foreground">Active plans</h3>
             <div className="flex flex-col gap-2">
               {holds.length > 0 ? (
                 holds.slice(0, 8).map((hold) => (
@@ -101,7 +101,7 @@ export function SoftHoldsSection({
                       <Badge variant="outline">{hold.status}</Badge>
                     </div>
                     <form action={cancelSoftHold} className="mt-3">
-                      <input type="hidden" name="holdId" value={hold.id} />
+                      <input type="hidden" name="planId" value={hold.id} />
                       <Button type="submit" variant="outline" size="sm">
                         Cancel
                       </Button>
@@ -110,7 +110,7 @@ export function SoftHoldsSection({
                 ))
               ) : (
                 <p className="rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
-                  No active soft holds yet.
+                  No active plans yet.
                 </p>
               )}
             </div>

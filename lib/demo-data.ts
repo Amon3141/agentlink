@@ -48,7 +48,7 @@ export const demoResources: Resource[] = [
     id: "resource-soft-hold",
     user_id: "demo-user",
     type: "soft_hold_calendar",
-    name: "Soft hold calendar",
+    name: "Calendar",
     config: {
       timezone: "local",
       defaultDurationMinutes: 30,

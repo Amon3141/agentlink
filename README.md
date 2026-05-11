@@ -63,8 +63,8 @@ Apply `supabase/migrations/0002_mcp_provider_foundation.sql` after the core migr
 Apply `supabase/migrations/0003_custom_resources_soft_holds.sql` after the provider foundation to add first-party scheduling resources:
 
 - `availability_policy`, `soft_hold_calendar`, and `sharing_rules` resource types
-- `soft_holds` with owner-only RLS and FK checks back to owner-owned soft-hold calendar resources
-- an `internal` provider with AgentLink tools for checking soft-hold availability and creating tentative holds
+- `soft_holds` with owner-only RLS and FK checks back to owner-owned `soft_hold_calendar` resources
+- an `internal` provider with AgentLink tools for checking calendar availability and creating tentative plans
 
 After applying the migration, verify the Supabase Dashboard Auth URL settings include:
 
@@ -83,7 +83,7 @@ npm run seed:hackathon
 
 This creates demo auth users (`hana_demo`, `ren_demo`, `maya_demo` at `@agentlink.invalid`), friends rows, agents, resources, and a sample conversation for the **primary** profile (`amon_kizawa` / `amon_kizwa`, or `HACKATHON_OWNER_*`). It also seeds a **partner** profile (`kizawaamon@gmail.com` / username `kizawaamon`, or `HACKATHON_PARTNER_*`) with its own agents and resources, and an **accepted friend link** between the two when both exist.
 
-Optional MCP and soft-hold rows are skipped if migrations `0002` / `0003` are not applied yet.
+Optional MCP and first-party calendar rows are skipped if migrations `0002` / `0003` are not applied yet.
 
 ## Provider OAuth Setup
 
@@ -110,12 +110,12 @@ Write tools such as GitHub comments, tentative calendar events, Gmail drafts, an
 AgentLink includes custom owner-defined resources so the core scheduling story works without external OAuth:
 
 - **Availability Policy** captures preferred days/times, default meeting duration, buffer time, focus blocks, work/social preferences, and freeform notes. Agents receive a concise policy summary instead of raw calendar details.
-- **Soft Hold Calendar** is an internal AgentLink calendar for tentative holds. It is separate from Google Calendar and never pretends to be Google availability when a provider call fails.
+- **Calendar** (`soft_hold_calendar`) is an internal AgentLink calendar for tentative plans. It is separate from Google Calendar and never pretends to be Google availability when a provider call fails.
 - **Sharing Rules** and **short notes** (stored as the `mock` resource type) provide lightweight context for privacy boundaries and freeform owner text.
 
-Agents can only use a soft-hold calendar when the owner attaches that resource to the agent and grants the matching `internal.*` tool permission. Clod may request a structured tool intent, but only the server validates ownership, agent attachment, tool permission, and input shape before creating a hold. Tool results and audit rows are sanitized; OAuth tokens, refresh tokens, provider credentials, email bodies, Slack raw logs, and private calendar details are never sent to the browser or Clod.
+Agents can only use this calendar when the owner attaches that resource to the agent and grants the matching `internal.*` tool permission. Clod may request a structured tool intent, but only the server validates ownership, agent attachment, tool permission, and input shape before creating a plan. Tool results and audit rows are sanitized; OAuth tokens, refresh tokens, provider credentials, email bodies, Slack raw logs, and private calendar details are never sent to the browser or Clod.
 
-In the Mina/Ken story, Mochi can summarize: “Mina appears available Tuesday 6:00-6:30pm,” based on an attached availability policy and soft-hold calendar. If `internal.create_soft_hold` is approved, the server creates a tentative AgentLink hold and writes `tool_call_audit`; otherwise Mochi can recommend the time without mutating data.
+In the Mina/Ken story, Mochi can summarize: “Mina appears available Tuesday 6:00-6:30pm,” based on an attached availability policy and AgentLink calendar. If `internal.create_soft_hold` is approved, the server creates a tentative AgentLink plan and writes `tool_call_audit`; otherwise Mochi can recommend the time without mutating data.
 
 ## Run
 

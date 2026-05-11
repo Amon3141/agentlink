@@ -213,7 +213,7 @@ describe("conversation orchestration helpers", () => {
         id: "calendar",
         user_id: "user",
         type: "soft_hold_calendar",
-        name: "Mochi soft holds",
+        name: "Mochi calendar",
         config: {
           timezone: "America/Los_Angeles",
           defaultDurationMinutes: 30,
@@ -234,12 +234,12 @@ describe("conversation orchestration helpers", () => {
     const summary = summarizeResources(resources)
 
     expect(summary).toContain("Availability policy")
-    expect(summary).toContain("AgentLink soft-hold calendar")
+    expect(summary).toContain("AgentLink calendar")
     expect(summary).toContain("Landing page review")
     expect(summary).not.toContain("access_token")
   })
 
-  it("validates internal soft-hold tool inputs", () => {
+  it("validates internal calendar plan tool inputs", () => {
     const tool = getProviderTool("internal.create_soft_hold")
 
     expect(tool?.isWrite).toBe(true)

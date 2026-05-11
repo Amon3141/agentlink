@@ -138,7 +138,7 @@ export function SoftHoldCalendarForm({ resource }: { resource: Resource }) {
             id="soft-calendar-name"
             name="name"
             required
-            placeholder="Soft hold calendar"
+            placeholder="Calendar"
             defaultValue={resource.name}
           />
         </Field>
@@ -162,11 +162,11 @@ export function SoftHoldCalendarForm({ resource }: { resource: Resource }) {
             id="soft-calendar-notes"
             name="notes"
             rows={3}
-            placeholder="Use this for tentative meeting holds until you approve a real calendar write."
+            placeholder="Use this for tentative meeting plans until you approve a real calendar write."
             defaultValue={notes}
           />
         </Field>
-        <Button type="submit">Save soft hold calendar</Button>
+        <Button type="submit">Save calendar</Button>
       </FieldGroup>
     </form>
   )

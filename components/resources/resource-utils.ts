@@ -5,7 +5,7 @@ export function resourceTypeLabel(type: Resource["type"]) {
     mock: "Note",
     google_calendar: "Google Calendar",
     availability_policy: "Availability policy",
-    soft_hold_calendar: "Soft hold calendar",
+    soft_hold_calendar: "Calendar",
     sharing_rules: "Sharing rules",
   }
 
@@ -33,8 +33,8 @@ export function providerStatusLabel(status: ProviderConnectionCard["status"]) {
     connected: "Connected",
     revoked: "Disconnected",
     error: "Needs attention",
-    not_configured: "Not configured",
-    not_connected: "Not connected",
+    not_configured: "Coming soon",
+    not_connected: "Coming soon",
   }
 
   return labels[status]
@@ -61,7 +61,7 @@ export function resourceSummary(resource: Resource) {
   }
 
   if (resource.type === "soft_hold_calendar") {
-    return `Internal tentative holds, ${String(
+    return `Internal tentative plans, ${String(
       resource.config.defaultDurationMinutes ?? 30
     )} minute default`
   }

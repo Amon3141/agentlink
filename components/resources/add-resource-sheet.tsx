@@ -97,7 +97,7 @@ export function AddResourceSheetContent({
   const title = editingMock
     ? "Edit short note"
     : editingSoftHold
-      ? "Edit soft hold calendar"
+      ? "Edit calendar"
       : step === 1
         ? "Add new resource"
         : kinds.find((k) => k.id === kind)?.title

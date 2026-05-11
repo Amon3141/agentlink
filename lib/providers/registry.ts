@@ -70,7 +70,7 @@ const providers: ProviderDefinition[] = [
     id: "google_calendar",
     slug: "google-calendar",
     label: "Google Calendar",
-    description: "Check availability and create tentative holds when explicitly approved.",
+    description: "Check availability and create tentative plans when explicitly approved.",
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
     scopes: [
@@ -110,7 +110,7 @@ const providers: ProviderDefinition[] = [
     id: "internal",
     slug: "internal",
     label: "AgentLink",
-    description: "Use first-party availability policies and soft holds without external OAuth.",
+    description: "Use first-party availability policies and calendar plans without external OAuth.",
     authUrl: "",
     tokenUrl: "",
     scopes: [],
@@ -144,8 +144,8 @@ export const providerTools: ProviderToolDefinition[] = [
   {
     id: "internal.check_availability",
     provider: "internal",
-    label: "Check AgentLink soft-hold availability",
-    description: "Check tentative and confirmed AgentLink soft holds for a requested time window.",
+    label: "Check AgentLink calendar availability",
+    description: "Check tentative and confirmed calendar plans for a requested time window.",
     isWrite: false,
     inputSchema: softHoldWindowSchema,
     execute: async (input, context) => {
@@ -161,8 +161,8 @@ export const providerTools: ProviderToolDefinition[] = [
 
       return {
         summary: holds.length === 0
-          ? "AgentLink soft-hold calendar appears available."
-          : "AgentLink soft-hold calendar has tentative or confirmed holds.",
+          ? "AgentLink calendar appears available."
+          : "AgentLink calendar has tentative or confirmed plans.",
         data: {
           available: holds.length === 0,
           holds: holds.map(summarizeSoftHold),
@@ -173,8 +173,8 @@ export const providerTools: ProviderToolDefinition[] = [
   {
     id: "internal.create_soft_hold",
     provider: "internal",
-    label: "Create AgentLink soft hold",
-    description: "Create a tentative hold on an owner-approved AgentLink calendar.",
+    label: "Create AgentLink calendar plan",
+    description: "Create a tentative plan on an owner-approved AgentLink calendar.",
     isWrite: true,
     inputSchema: softHoldInputSchema,
     execute: async (input, context) => {
@@ -190,7 +190,7 @@ export const providerTools: ProviderToolDefinition[] = [
 
       if (overlaps.length > 0) {
         return {
-          summary: "Soft hold was not created because the requested window overlaps an existing hold.",
+          summary: "Plan was not created because the requested window overlaps an existing plan.",
           data: {
             created: false,
             available: false,
@@ -222,11 +222,11 @@ export const providerTools: ProviderToolDefinition[] = [
         .single()
 
       if (error || !data) {
-        throw new Error("Soft hold could not be created.")
+        throw new Error("Plan could not be created.")
       }
 
       return {
-        summary: "Created a tentative AgentLink soft hold.",
+        summary: "Created a tentative AgentLink plan.",
         data: {
           created: true,
           hold: summarizeSoftHold(data as JsonRecord),
@@ -237,8 +237,8 @@ export const providerTools: ProviderToolDefinition[] = [
   {
     id: "internal.list_soft_holds",
     provider: "internal",
-    label: "List AgentLink soft holds",
-    description: "List sanitized AgentLink soft holds in a requested time window.",
+    label: "List AgentLink calendar plans",
+    description: "List sanitized AgentLink plans in a requested time window.",
     isWrite: false,
     inputSchema: softHoldWindowSchema,
     execute: async (input, context) => {
@@ -254,7 +254,7 @@ export const providerTools: ProviderToolDefinition[] = [
       })
 
       return {
-        summary: `Found ${holds.length} AgentLink soft hold(s).`,
+        summary: `Found ${holds.length} AgentLink plan(s).`,
         data: { holds: holds.map(summarizeSoftHold) },
       }
     },
@@ -447,7 +447,7 @@ export const providerTools: ProviderToolDefinition[] = [
     id: "google_calendar.create_tentative_event",
     provider: "google_calendar",
     label: "Create tentative Google Calendar event",
-    description: "Create a tentative hold on the primary calendar.",
+    description: "Create a tentative plan on the primary calendar.",
     isWrite: true,
     inputSchema: z.object({
       summary: z.string().min(1).max(200),
@@ -479,7 +479,7 @@ export const providerTools: ProviderToolDefinition[] = [
         }
       )
       return {
-        summary: "Created a tentative calendar hold.",
+        summary: "Created a tentative calendar plan.",
         data: { eventId: body.id, htmlLink: body.htmlLink },
       }
     },
@@ -707,7 +707,7 @@ async function assertAttachedSoftHoldCalendar(
     .single()
 
   if (!resource) {
-    throw new Error("Soft hold calendar is unavailable.")
+    throw new Error("Calendar is unavailable.")
   }
 
   const { data: binding } = await admin
@@ -718,7 +718,7 @@ async function assertAttachedSoftHoldCalendar(
     .maybeSingle()
 
   if (!binding) {
-    throw new Error("Soft hold calendar is not attached to this agent.")
+    throw new Error("Calendar is not attached to this agent.")
   }
 }
 
@@ -759,7 +759,7 @@ async function getOverlappingSoftHolds({
   const { data, error } = await query
 
   if (error) {
-    throw new Error("Soft holds could not be checked.")
+    throw new Error("Calendar plans could not be checked.")
   }
 
   return (data ?? []) as JsonRecord[]

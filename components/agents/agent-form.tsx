@@ -210,7 +210,7 @@ function resourceLabel(type: Resource["type"]) {
     mock: "short note",
     google_calendar: "Google Calendar",
     availability_policy: "availability policy",
-    soft_hold_calendar: "soft holds",
+    soft_hold_calendar: "calendar",
     sharing_rules: "sharing rules",
   }
 

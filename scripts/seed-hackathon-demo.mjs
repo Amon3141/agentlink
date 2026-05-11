@@ -323,7 +323,7 @@ async function run(url, serviceKey) {
           "Focus blocks: Mon/Wed 09:00–12:00 (deep work).",
           "Work: mornings for build; afternoons for syncs.",
           "Social: short evening hangs during hackathon.",
-          "Notes: Demo for judges — add structured Availability / Soft-hold resources after DB migration 0003.",
+          "Notes: Demo for judges — add structured Availability / Calendar resources after DB migration 0003.",
         ].join("\n"),
       },
     },
@@ -331,11 +331,11 @@ async function run(url, serviceKey) {
       id: IDS.resSoftHoldCal,
       user_id: amonId,
       type: "soft_hold_calendar",
-      name: "Soft hold calendar",
+      name: "Calendar",
       config: {
         timezone: "America/Los_Angeles",
         defaultDurationMinutes: 30,
-        notes: "Hackathon demo — tentative holds before real calendar writes.",
+        notes: "Hackathon demo — tentative plans before real calendar writes.",
       },
     },
     {
@@ -654,7 +654,7 @@ async function run(url, serviceKey) {
           created_by: "owner",
           created_via_tool_id: null,
           conversation_id: null,
-          notes: "Hackathon seed hold",
+          notes: "Hackathon seed plan",
         },
         {
           id: IDS.softHold2,
@@ -673,7 +673,7 @@ async function run(url, serviceKey) {
       const { error: shErr } = await supabase.from("soft_holds").upsert(softHolds, {
         onConflict: "id",
       })
-      if (shErr) console.warn("Soft holds seed skipped:", shErr.message)
+      if (shErr) console.warn("Calendar plans seed skipped:", shErr.message)
       else console.log("Seeded soft_holds for existing soft_hold_calendar resource.")
     }
   }
@@ -785,7 +785,7 @@ async function run(url, serviceKey) {
 
   console.log("\n--- Hackathon demo flow ---")
   console.log(
-    `1. Sign in as ${amonProfile.username} — 3 private agents (Mochi, Sora, Nami) + mock/Google resources; built-in soft hold calendar when migration 0003+ is applied.`
+    `1. Sign in as ${amonProfile.username} — 3 private agents (Mochi, Sora, Nami) + mock/Google resources; built-in AgentLink calendar when migration 0003+ is applied.`
   )
   if (kizawaId) {
     console.log(

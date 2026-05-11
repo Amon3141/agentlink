@@ -174,7 +174,7 @@ async function ensureDefaultSoftHoldCalendar(
   const { error: insertError } = await supabase.from("resources").insert({
     user_id: userId,
     type: "soft_hold_calendar",
-    name: "Soft hold calendar",
+    name: "Calendar",
     config: {
       timezone: "local",
       defaultDurationMinutes: 30,
@@ -224,7 +224,7 @@ export const getResources = cache(
     let fetchError: string | null = null
     if (ensureCalendarError && !hasSoftHoldCalendar) {
       fetchError =
-        "Built-in soft hold calendar could not be created. Apply Supabase migrations through `0006_soft_hold_calendar_builtin.sql` (after `0003_custom_resources_soft_holds.sql`) and ensure your profile row exists. "
+        "Built-in calendar could not be created. Apply Supabase migrations through `0006_soft_hold_calendar_builtin.sql` (after `0003_custom_resources_soft_holds.sql`) and ensure your profile row exists. "
         + `Details: ${ensureCalendarError}`
     }
 

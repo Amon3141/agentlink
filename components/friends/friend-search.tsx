@@ -28,24 +28,13 @@ export function FriendSearch({ status }: { status?: string }) {
             <Field>
               <FieldLabel htmlFor="query" className="flex w-full items-center gap-2">
                 Email or username
-                <span
-                  className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/30 px-1.5 py-0.5 text-[10px] font-normal leading-none text-muted-foreground"
-                  title="Hackathon demo try-out: amon.kizawa@icloud.com · kizawaamon@gmail.com"
-                >
-                  <InfoIcon className="size-3 shrink-0 opacity-70" aria-hidden />
-                  Demo
-                </span>
               </FieldLabel>
               <Input id="query" name="query" placeholder="hana@example.com" />
               <FieldDescription className="text-xs text-muted-foreground/75">
                 Hackathon demo — try{" "}
                 <span className="font-mono text-[11px] text-muted-foreground/90">
-                  amon.kizawa@icloud.com
-                </span>{" "}
-                or{" "}
-                <span className="font-mono text-[11px] text-muted-foreground/90">
                   kizawaamon@gmail.com
-                </span>
+                </span>{" "}
                 .
               </FieldDescription>
             </Field>

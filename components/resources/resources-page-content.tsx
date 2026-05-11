@@ -13,20 +13,20 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 function resourcesUrlErrorMessage(code: string): string {
   switch (code) {
     case "soft-hold-calendar":
-      return "Could not update the soft hold calendar. Confirm your database migrations include custom resources (0003) and the built-in calendar index (0006)."
+      return "Could not update the calendar. Confirm your database migrations include custom resources (0003) and the built-in calendar index (0006)."
     case "availability-policy":
       return "Could not save the availability policy. Check the form values and try again."
     case "sharing-rules":
       return "Could not save sharing rules. Check the form values and try again."
     case "soft-hold":
     case "soft-hold-resource":
-      return "Could not create that soft hold. Check the time range and calendar."
+      return "Could not create that plan. Check the time range and calendar."
     case "soft-hold-cancel":
-      return "Could not cancel that hold."
+      return "Could not cancel that plan."
     case "delete":
       return "Could not delete that resource."
     case "delete-protected":
-      return "The built-in soft hold calendar cannot be deleted."
+      return "The built-in calendar cannot be deleted."
     case "resource":
       return "Could not save that short note."
     default:

@@ -212,7 +212,7 @@ export async function updateSoftHoldCalendarResource(formData: FormData) {
   const { error } = await supabase
     .from("resources")
     .update({
-      name: formText(formData, "name", "Soft hold calendar"),
+      name: formText(formData, "name", "Calendar"),
       config: parsed.data,
     })
     .eq("id", resourceId)
@@ -272,7 +272,7 @@ export async function createSoftHold(formData: FormData) {
   const end = parseDateFormValue(formData.get("endAt"))
   const parsed = softHoldInputSchema.safeParse({
     resourceId: String(formData.get("resourceId") ?? ""),
-    title: formText(formData, "title", "Tentative hold"),
+    title: formText(formData, "title", "Tentative plan"),
     start,
     end,
     notes: formText(formData, "notes", ""),
@@ -316,7 +316,7 @@ export async function createSoftHold(formData: FormData) {
 export async function cancelSoftHold(formData: FormData) {
   const supabase = await createSupabaseServerClient()
   const userId = await getCurrentUserId()
-  const holdId = String(formData.get("holdId") ?? "")
+  const holdId = String(formData.get("planId") ?? formData.get("holdId") ?? "")
 
   if (!supabase || !userId || !uuidPattern.test(holdId)) {
     redirect("/resources?error=soft-hold-cancel")

@@ -7,7 +7,18 @@ import type { ProviderConnectionCard } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { providerSlug, providerStatusLabel } from "@/components/resources/resource-utils"
+import { cn } from "@/lib/utils"
 
 function ProviderChip({ card }: { card: ProviderConnectionCard }) {
   const slug = providerSlug(card.provider)
@@ -33,14 +44,43 @@ function ProviderChip({ card }: { card: ProviderConnectionCard }) {
             Disconnect
           </Button>
         </form>
-      ) : (
+      ) : card.configured ? (
         <a
           className={buttonVariants({ variant: "secondary", size: "sm" })}
-          aria-disabled={!card.configured}
-          href={card.configured ? `/api/resources/${slug}/connect` : undefined}
+          href={`/api/resources/${slug}/connect`}
         >
-          {card.configured ? `Connect ${card.label}` : "Coming soon"}
+          {`Connect ${card.label}`}
         </a>
+      ) : (
+        <Dialog>
+          <DialogTrigger render={<Button type="button" variant="secondary" size="sm" />}>
+            {`Connect ${card.label}`}
+          </DialogTrigger>
+          <DialogContent
+            showCloseButton
+            className={cn(
+              "sketch-border max-w-[calc(100%-2rem)] rounded-2xl bg-card/95 p-6 sm:max-w-md",
+              "gap-5 ring-1 ring-foreground/10"
+            )}
+          >
+            <DialogHeader className="gap-3 text-left">
+              <DialogTitle className="text-base leading-snug">
+                {card.label} is not available on this deployment yet
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-relaxed">
+                OAuth connectors are still being wired up for this environment. The feature is coming soon. In the
+                meantime, built-in AgentLink scheduling tools are provisioned automatically for signed-in accounts.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="-mx-6 -mb-6 mt-0 border-t border-border/60 bg-muted/40 px-6 py-4 sm:justify-end">
+              <DialogClose
+                render={<Button type="button" variant="secondary" className="w-full sm:w-auto" />}
+              >
+                Got it
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

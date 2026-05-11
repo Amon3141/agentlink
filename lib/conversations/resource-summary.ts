@@ -45,11 +45,11 @@ export function summarizeResources(resources: Resource[]) {
           ? resource.config.upcomingSoftHolds.slice(0, 8)
           : []
         const base = parsed.success
-          ? `AgentLink soft-hold calendar "${resource.name}": timezone ${parsed.data.timezone}; default duration ${parsed.data.defaultDurationMinutes} minutes${parsed.data.notes ? `; notes: ${parsed.data.notes}` : ""}`
-          : `AgentLink soft-hold calendar "${resource.name}": configuration needs review`
+          ? `AgentLink calendar "${resource.name}": timezone ${parsed.data.timezone}; default duration ${parsed.data.defaultDurationMinutes} minutes${parsed.data.notes ? `; notes: ${parsed.data.notes}` : ""}`
+          : `AgentLink calendar "${resource.name}": configuration needs review`
         const holds = upcoming.length > 0
-          ? `upcoming tentative/confirmed holds: ${upcoming.map(formatSoftHold).join("; ")}`
-          : "upcoming tentative/confirmed holds: none in the next 14 days"
+          ? `upcoming tentative/confirmed plans: ${upcoming.map(formatSoftHold).join("; ")}`
+          : "upcoming tentative/confirmed plans: none in the next 14 days"
 
         return `${base} | ${holds}`
       }
@@ -79,7 +79,7 @@ function formatWindow(start?: string, end?: string) {
 
 function formatSoftHold(value: unknown) {
   if (!value || typeof value !== "object") {
-    return "hold"
+    return "plan"
   }
 
   const hold = value as Record<string, unknown>
