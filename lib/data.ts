@@ -473,6 +473,26 @@ export async function getConversation(
   return data ? hydrateConversation(data as Conversation) : null
 }
 
+function agentRowOrPlaceholder(
+  row: Agent | null,
+  agentId: string,
+  conversationCreatedAt: string
+): Agent {
+  if (row) {
+    return row
+  }
+  return {
+    id: agentId,
+    user_id: "",
+    name: "Unknown agent",
+    role: "",
+    system_prompt: "",
+    avatar_url: null,
+    is_public: false,
+    created_at: conversationCreatedAt,
+  }
+}
+
 async function hydrateConversation(
   conversation: Conversation
 ): Promise<ConversationWithMessages> {
@@ -497,8 +517,16 @@ async function hydrateConversation(
 
   return {
     ...conversation,
-    my_agent: myAgent as Agent,
-    friend_agent: friendAgent as Agent,
+    my_agent: agentRowOrPlaceholder(
+      myAgent as Agent | null,
+      conversation.my_agent_id,
+      conversation.created_at
+    ),
+    friend_agent: agentRowOrPlaceholder(
+      friendAgent as Agent | null,
+      conversation.friend_agent_id,
+      conversation.created_at
+    ),
     messages: (messages ?? []) as ConversationMessage[],
   }
 }
