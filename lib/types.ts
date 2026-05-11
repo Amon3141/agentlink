@@ -18,7 +18,6 @@ export type Resource = {
     | "availability_policy"
     | "soft_hold_calendar"
     | "sharing_rules"
-    | "project_brief"
   name: string
   config: Record<string, unknown>
   created_at: string

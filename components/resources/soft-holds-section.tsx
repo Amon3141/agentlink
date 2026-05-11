@@ -79,7 +79,8 @@ export function SoftHoldsSection({
               </form>
             ) : (
               <p className="rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
-                Add a soft hold calendar from &quot;Add resource&quot; before you can place holds here.
+                Your built-in soft hold calendar should appear under Your context. If it is missing, refresh
+                the page or confirm database migrations are applied.
               </p>
             )}
           </div>

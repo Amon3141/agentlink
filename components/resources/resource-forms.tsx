@@ -3,31 +3,40 @@
 import {
   saveAvailabilityPolicyResource,
   saveMockResource,
-  saveProjectBriefResource,
   saveSharingRulesResource,
-  saveSoftHoldCalendarResource,
+  updateSoftHoldCalendarResource,
 } from "@/lib/actions"
+import type { Resource } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-export function MockResourceForm() {
+export function ShortNoteResourceForm({ resource }: { resource?: Resource | null }) {
+  const text = resource?.type === "mock" ? String(resource.config.text ?? "") : ""
+
   return (
-    <form action={saveMockResource}>
+    <form action={saveMockResource} key={resource?.id ?? "new"}>
+      {resource?.type === "mock" ? <input type="hidden" name="resourceId" value={resource.id} /> : null}
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="mock-name">Name</FieldLabel>
-          <Input id="mock-name" name="name" required placeholder="Availability notes" />
+          <Input
+            id="mock-name"
+            name="name"
+            required
+            placeholder="Weekly planning"
+            defaultValue={resource?.type === "mock" ? resource.name : undefined}
+          />
         </Field>
         <Field>
           <FieldLabel htmlFor="mock-text">Context</FieldLabel>
-          <Textarea id="mock-text" name="text" required rows={6} />
+          <Textarea id="mock-text" name="text" required rows={6} defaultValue={text} />
           <FieldDescription>
             Keep this human-readable. The prompt builder summarizes it for agent turns.
           </FieldDescription>
         </Field>
-        <Button type="submit">Save mock resource</Button>
+        <Button type="submit">{resource?.type === "mock" ? "Save changes" : "Save short note"}</Button>
       </FieldGroup>
     </form>
   )
@@ -113,17 +122,29 @@ export function AvailabilityPolicyForm() {
   )
 }
 
-export function SoftHoldCalendarForm() {
+export function SoftHoldCalendarForm({ resource }: { resource: Resource }) {
+  const cfg = resource.type === "soft_hold_calendar" ? resource.config : {}
+  const timezone = String(cfg.timezone ?? "local")
+  const defaultDuration = Number(cfg.defaultDurationMinutes ?? 30)
+  const notes = String(cfg.notes ?? "")
+
   return (
-    <form action={saveSoftHoldCalendarResource}>
+    <form action={updateSoftHoldCalendarResource}>
+      <input type="hidden" name="resourceId" value={resource.id} />
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="soft-calendar-name">Name</FieldLabel>
-          <Input id="soft-calendar-name" name="name" required placeholder="Mochi soft holds" />
+          <Input
+            id="soft-calendar-name"
+            name="name"
+            required
+            placeholder="Soft hold calendar"
+            defaultValue={resource.name}
+          />
         </Field>
         <Field>
           <FieldLabel htmlFor="timezone">Timezone</FieldLabel>
-          <Input id="timezone" name="timezone" defaultValue="local" />
+          <Input id="timezone" name="timezone" defaultValue={timezone} />
         </Field>
         <Field>
           <FieldLabel htmlFor="soft-default-duration">Default minutes</FieldLabel>
@@ -132,7 +153,7 @@ export function SoftHoldCalendarForm() {
             name="defaultDurationMinutes"
             type="number"
             min="15"
-            defaultValue="30"
+            defaultValue={defaultDuration}
           />
         </Field>
         <Field>
@@ -141,7 +162,8 @@ export function SoftHoldCalendarForm() {
             id="soft-calendar-notes"
             name="notes"
             rows={3}
-            placeholder="Use this for tentative meeting holds until I approve a real calendar write."
+            placeholder="Use this for tentative meeting holds until you approve a real calendar write."
+            defaultValue={notes}
           />
         </Field>
         <Button type="submit">Save soft hold calendar</Button>
@@ -168,34 +190,6 @@ export function SharingRulesForm() {
         </Field>
         <Button type="submit" variant="secondary">
           Save sharing rules
-        </Button>
-      </FieldGroup>
-    </form>
-  )
-}
-
-export function ProjectBriefForm() {
-  return (
-    <form action={saveProjectBriefResource}>
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="project-name">Project brief name</FieldLabel>
-          <Input id="project-name" name="name" placeholder="Landing page brief" />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="project-title">Project</FieldLabel>
-          <Input id="project-title" name="projectName" placeholder="AgentLink landing page" />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="project-goals">Goals</FieldLabel>
-          <Textarea id="project-goals" name="goals" rows={3} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="project-share">What my agent may say</FieldLabel>
-          <Textarea id="project-share" name="allowedToShare" rows={3} />
-        </Field>
-        <Button type="submit" variant="secondary">
-          Save project brief
         </Button>
       </FieldGroup>
     </form>

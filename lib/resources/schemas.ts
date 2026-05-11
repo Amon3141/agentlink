@@ -44,14 +44,6 @@ export const sharingRulesConfigSchema = z.object({
   rules: z.string().trim().max(1600).default(""),
 })
 
-export const projectBriefConfigSchema = z.object({
-  projectName: z.string().trim().max(160).default("Untitled project"),
-  goals: z.string().trim().max(1200).default(""),
-  status: z.string().trim().max(800).default(""),
-  constraints: z.string().trim().max(800).default(""),
-  allowedToShare: z.string().trim().max(800).default(""),
-})
-
 export const softHoldInputSchema = z.object({
   resourceId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
@@ -70,4 +62,3 @@ export const softHoldWindowSchema = z.object({
 export type AvailabilityPolicyConfig = z.infer<typeof availabilityPolicyConfigSchema>
 export type SoftHoldCalendarConfig = z.infer<typeof softHoldCalendarConfigSchema>
 export type SharingRulesConfig = z.infer<typeof sharingRulesConfigSchema>
-export type ProjectBriefConfig = z.infer<typeof projectBriefConfigSchema>

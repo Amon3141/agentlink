@@ -148,26 +148,66 @@ export async function getAgentToolPermissionIds(agentId: string): Promise<string
     .map((row) => `${row.connection_id}:${row.tool_id}`)
 }
 
-export const getResources = cache(async (): Promise<Resource[]> => {
-  const supabase = await createSupabaseServerClient()
-  const userId = await getCurrentUserId()
+type SupabaseServer = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>
 
-  if (!supabase || !userId) {
-    return demoResources
-  }
-
-  const { data, error } = await supabase
+async function ensureDefaultSoftHoldCalendar(supabase: SupabaseServer, userId: string) {
+  const { data: existing, error: selectError } = await supabase
     .from("resources")
-    .select("*")
+    .select("id")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .eq("type", "soft_hold_calendar")
+    .maybeSingle()
 
-  if (error) {
-    return []
+  if (selectError || existing) {
+    return
   }
 
-  return (data ?? []).map(sanitizeResource) as Resource[]
-})
+  const { error } = await supabase.from("resources").insert({
+    user_id: userId,
+    type: "soft_hold_calendar",
+    name: "Soft hold calendar",
+    config: {
+      timezone: "local",
+      defaultDurationMinutes: 30,
+      notes: "",
+    },
+  })
+
+  if (error && error.code !== "23505" && process.env.NODE_ENV === "development") {
+    console.warn("[ensureDefaultSoftHoldCalendar]", error.message)
+  }
+}
+
+export const getResources = cache(
+  async (): Promise<{ resources: Resource[]; fetchError: string | null }> => {
+    const supabase = await createSupabaseServerClient()
+    const userId = await getCurrentUserId()
+
+    if (!supabase || !userId) {
+      return { resources: demoResources, fetchError: null }
+    }
+
+    await ensureDefaultSoftHoldCalendar(supabase, userId)
+
+    const { data, error } = await supabase
+      .from("resources")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[getResources]", error.message)
+      }
+      return { resources: [], fetchError: error.message }
+    }
+
+    return {
+      resources: (data ?? []).map(sanitizeResource) as Resource[],
+      fetchError: null,
+    }
+  }
+)
 
 export const getSoftHolds = cache(async (): Promise<SoftHold[]> => {
   const supabase = await createSupabaseServerClient()
@@ -375,10 +415,17 @@ export const getConversations = cache(async (): Promise<ConversationWithMessages
     return []
   }
 
+  const seen = new Set<string>()
+  const uniqueRows = conversations.filter((row) => {
+    if (seen.has(row.id)) {
+      return false
+    }
+    seen.add(row.id)
+    return true
+  })
+
   return Promise.all(
-    conversations.map(async (conversation) =>
-      hydrateConversation(conversation as Conversation)
-    )
+    uniqueRows.map(async (conversation) => hydrateConversation(conversation as Conversation))
   )
 })
 

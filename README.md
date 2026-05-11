@@ -62,7 +62,7 @@ Apply `supabase/migrations/0002_mcp_provider_foundation.sql` after the core migr
 
 Apply `supabase/migrations/0003_custom_resources_soft_holds.sql` after the provider foundation to add first-party scheduling resources:
 
-- `availability_policy`, `soft_hold_calendar`, `sharing_rules`, and `project_brief` resource types
+- `availability_policy`, `soft_hold_calendar`, and `sharing_rules` resource types
 - `soft_holds` with owner-only RLS and FK checks back to owner-owned soft-hold calendar resources
 - an `internal` provider with AgentLink tools for checking soft-hold availability and creating tentative holds
 
@@ -111,7 +111,7 @@ AgentLink includes custom owner-defined resources so the core scheduling story w
 
 - **Availability Policy** captures preferred days/times, default meeting duration, buffer time, focus blocks, work/social preferences, and freeform notes. Agents receive a concise policy summary instead of raw calendar details.
 - **Soft Hold Calendar** is an internal AgentLink calendar for tentative holds. It is separate from Google Calendar and never pretends to be Google availability when a provider call fails.
-- **Sharing Rules** and **Project Brief** provide lightweight structured context for privacy boundaries and project framing.
+- **Sharing Rules** and **short notes** (stored as the `mock` resource type) provide lightweight context for privacy boundaries and freeform owner text.
 
 Agents can only use a soft-hold calendar when the owner attaches that resource to the agent and grants the matching `internal.*` tool permission. Clod may request a structured tool intent, but only the server validates ownership, agent attachment, tool permission, and input shape before creating a hold. Tool results and audit rows are sanitized; OAuth tokens, refresh tokens, provider credentials, email bodies, Slack raw logs, and private calendar details are never sent to the browser or Clod.
 

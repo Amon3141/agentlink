@@ -1,8 +1,8 @@
-import { SearchIcon } from "lucide-react"
+import { InfoIcon, SearchIcon } from "lucide-react"
 import { sendFriendRequest } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
 export function FriendSearch({ status }: { status?: string }) {
@@ -26,8 +26,28 @@ export function FriendSearch({ status }: { status?: string }) {
         <form action={sendFriendRequest} className={status ? "border-t border-border/60 pt-4" : undefined}>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="query">Email or username</FieldLabel>
+              <FieldLabel htmlFor="query" className="flex w-full items-center gap-2">
+                Email or username
+                <span
+                  className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/30 px-1.5 py-0.5 text-[10px] font-normal leading-none text-muted-foreground"
+                  title="Hackathon demo try-out: amon.kizawa@icloud.com · kizawaamon@gmail.com"
+                >
+                  <InfoIcon className="size-3 shrink-0 opacity-70" aria-hidden />
+                  Demo
+                </span>
+              </FieldLabel>
               <Input id="query" name="query" placeholder="hana@example.com" />
+              <FieldDescription className="text-xs text-muted-foreground/75">
+                Hackathon demo — try{" "}
+                <span className="font-mono text-[11px] text-muted-foreground/90">
+                  amon.kizawa@icloud.com
+                </span>{" "}
+                or{" "}
+                <span className="font-mono text-[11px] text-muted-foreground/90">
+                  kizawaamon@gmail.com
+                </span>
+                .
+              </FieldDescription>
             </Field>
             <Button type="submit">Send request</Button>
           </FieldGroup>

@@ -61,18 +61,24 @@ export async function runNextConversationTurn(conversationId: string) {
   const nextTurn = claim.turn_number
   const senderAgentId = claim.sender_agent_id
 
-  const [{ data: agent }, { data: resources }] = await Promise.all([
+  const listenerAgentId =
+    senderAgentId === conversation.my_agent_id
+      ? conversation.friend_agent_id
+      : conversation.my_agent_id
+
+  const [{ data: agent }, { data: listenerAgent }, { data: resources }] = await Promise.all([
     supabase.from("agents").select("*").eq("id", senderAgentId).single(),
+    supabase.from("agents").select("id,name").eq("id", listenerAgentId).single(),
     supabase
       .from("agent_resources")
       .select("resources(*)")
       .eq("agent_id", senderAgentId),
   ])
 
-  if (!agent) {
+  if (!agent || !listenerAgent) {
     await supabase.rpc("fail_conversation_turn", {
       p_message_id: claim.message_id,
-      p_reason: "The selected sender agent could not be loaded.",
+      p_reason: "The selected conversation agents could not be loaded.",
     })
     await supabase.from("conversations").update({ status: "failed" }).eq("id", conversationId)
     return { status: "failed", message: null }
@@ -95,6 +101,8 @@ export async function runNextConversationTurn(conversationId: string) {
     purpose: conversation.purpose,
     messages: history,
     turnNumber: nextTurn,
+    speakerAgent: agent as Agent,
+    listenerAgent: listenerAgent as Pick<Agent, "id" | "name">,
   })
 
   try {
@@ -126,9 +134,23 @@ export async function runNextConversationTurn(conversationId: string) {
       .eq("id", claim.message_id)
       .single()
 
+    const { data: convoAfter } = await supabase
+      .from("conversations")
+      .select("status")
+      .eq("id", conversationId)
+      .single()
+
+    const resolvedStatus =
+      convoAfter?.status === "completed" || convoAfter?.status === "failed"
+        ? convoAfter.status
+        : response.thinkIsTerminated
+          ? "completed"
+          : "ongoing"
+
     return {
-      status: response.thinkIsTerminated ? "completed" : "ongoing",
+      status: resolvedStatus,
       message: inserted,
+      usedTools: response.toolCallCount > 0,
     }
   } catch (error) {
     await supabase.rpc("fail_conversation_turn", {
@@ -160,7 +182,10 @@ async function runClodToolLoop({
     const response = await callClodAgent(nextPrompt, systemPrompt)
 
     if (!response.toolRequest) {
-      return response
+      return {
+        ...response,
+        toolCallCount,
+      }
     }
 
     if (toolCallCount >= maxToolCallsPerTurn) {

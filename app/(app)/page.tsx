@@ -16,12 +16,13 @@ import { PaperSurface } from "@/components/ui/paper-surface"
 import { getAgents, getConversations, getFriends, getResources } from "@/lib/data"
 
 export default async function Home() {
-  const [agents, resources, friends, conversations] = await Promise.all([
+  const [agents, resourcesResult, friends, conversations] = await Promise.all([
     getAgents(),
     getResources(),
     getFriends(),
     getConversations(),
   ])
+  const resources = resourcesResult.resources
 
   const stats: { label: string; value: number; icon: typeof BotIcon }[] = [
     { label: "Agents", value: agents.length, icon: BotIcon },

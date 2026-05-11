@@ -159,7 +159,9 @@ export function AgentForm({
                   })
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Connect GitHub, Google Calendar, Gmail, or Slack on the Resources page first.
+                    No connected tool providers yet. Open the Resources page to connect GitHub, Google Calendar,
+                    Gmail, or Slack. Built-in AgentLink scheduling tools are provisioned automatically for
+                    signed-in accounts.
                   </p>
                 )}
               </div>
@@ -182,12 +184,11 @@ export function AgentForm({
 
 function resourceLabel(type: Resource["type"]) {
   const labels: Record<Resource["type"], string> = {
-    mock: "mock",
+    mock: "short note",
     google_calendar: "Google Calendar",
     availability_policy: "availability policy",
     soft_hold_calendar: "soft holds",
     sharing_rules: "sharing rules",
-    project_brief: "project brief",
   }
 
   return labels[type]

@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { getProviderConnectionCards, getResources } from "@/lib/data"
 
 export default async function NewAgentPage() {
-  const [resources, providerConnectionCards] = await Promise.all([
+  const [{ resources }, providerConnectionCards] = await Promise.all([
     getResources(),
     getProviderConnectionCards(),
   ])

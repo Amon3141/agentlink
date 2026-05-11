@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { callClodAgent } from "@/lib/clod"
 import { summarizeResources } from "@/lib/conversations/resource-summary"
-import { buildTurnPrompt } from "@/lib/conversations/prompt-builder"
+import {
+  buildAgentSystemPrompt,
+  buildTurnPrompt,
+  formatConversationHistory,
+} from "@/lib/conversations/prompt-builder"
 import { getProviderTool } from "@/lib/providers/registry"
 import { availabilityPolicyConfigSchema, softHoldInputSchema } from "@/lib/resources/schemas"
 import { sanitizeInput } from "@/lib/providers/tool-runner"
@@ -9,7 +13,10 @@ import {
   parseClodAgentResponse,
   resolveClodAgentResponse,
 } from "@/lib/validators/clod-response"
-import type { Resource } from "@/lib/types"
+import type { Agent, ConversationMessage, Resource } from "@/lib/types"
+
+const soraAgent = makeAgent("agent-sora", "Sora")
+const lumoAgent = makeAgent("agent-lumo", "Lumo")
 
 describe("conversation orchestration helpers", () => {
   it("builds an initial turn prompt", () => {
@@ -17,10 +24,48 @@ describe("conversation orchestration helpers", () => {
       purpose: "Schedule a hangout",
       messages: [],
       turnNumber: 1,
+      speakerAgent: soraAgent,
+      listenerAgent: lumoAgent,
     })
 
-    expect(prompt).toContain("Purpose: Schedule a hangout")
-    expect(prompt).toContain("No prior turns")
+    expect(prompt).toContain("Conversation objective: Schedule a hangout")
+    expect(prompt).toContain("Sora, write your next message to Lumo.")
+    expect(prompt).toContain("No prior messages")
+    expect(prompt).not.toContain("Turn #")
+  })
+
+  it("does not put copyable placeholder responses in the system prompt", () => {
+    const prompt = buildAgentSystemPrompt({
+      agent: soraAgent,
+      purpose: "Schedule a hangout",
+      resources: [],
+    })
+
+    expect(prompt).toContain("Return exactly one valid JSON object")
+    expect(prompt).not.toContain("Friendly natural language response")
+    expect(prompt).not.toContain("Brief reason for the tool request")
+  })
+
+  it("formats long conversation history with a bounded recent window", () => {
+    const messages = Array.from({ length: 16 }, (_, index) =>
+      makeMessage({
+        turnNumber: index + 1,
+        senderAgentId: index % 2 === 0 ? soraAgent.id : lumoAgent.id,
+        content: `Message ${index + 1} with details that should be summarized for long threads.`,
+      })
+    )
+
+    const history = formatConversationHistory({
+      messages,
+      speakerAgent: soraAgent,
+      listenerAgent: lumoAgent,
+    })
+
+    expect(history).toContain("Earlier context, compressed")
+    expect(history).toContain("Recent messages")
+    expect(history).toContain("Message 16")
+    expect(history).not.toContain("Message 1 with details")
+    expect(history).not.toContain("Turn #")
   })
 
   it("validates Clod JSON output", () => {
@@ -90,6 +135,17 @@ describe("conversation orchestration helpers", () => {
     const resolved = resolveClodAgentResponse("Hello — no JSON here.")
     expect(resolved.message).toContain("Hello")
     expect(resolved.thinkIsTerminated).toBe(false)
+  })
+
+  it("filters known template leaks before saving a Clod message", () => {
+    const resolved = resolveClodAgentResponse({
+      message: "Friendly natural language response...",
+      thinkIsTerminated: false,
+      thinkIsTerminatedReason: "",
+    })
+
+    expect(resolved.message).not.toContain("Friendly natural language response")
+    expect(resolved.message).toContain("formatting glitch")
   })
 
   it("rejects malformed provider tool inputs", () => {
@@ -223,22 +279,60 @@ describe("conversation orchestration helpers", () => {
   })
 
   it("keeps demo Clod replies deterministic when Clod is not configured", async () => {
-    const previousEndpoint = process.env.CLOD_ENDPOINT
-    const previousNodeEnv = process.env.NODE_ENV
+    vi.stubEnv("CLOD_ENDPOINT", "")
+    vi.stubEnv("NODE_ENV", "test")
 
-    delete process.env.CLOD_ENDPOINT
-    process.env.NODE_ENV = "test"
+    try {
+      const reply = await callClodAgent(
+        buildTurnPrompt({
+          purpose: "Schedule a hangout",
+          messages: [],
+          turnNumber: 3,
+          speakerAgent: soraAgent,
+          listenerAgent: lumoAgent,
+        }),
+        "system"
+      )
 
-    const reply = await callClodAgent("Turn #1\nTurn #2", "system")
-
-    if (previousEndpoint) {
-      process.env.CLOD_ENDPOINT = previousEndpoint
-    } else {
-      delete process.env.CLOD_ENDPOINT
+      expect(reply.message).toContain("tentatively agreed")
+      expect(reply.thinkIsTerminated).toBe(false)
+    } finally {
+      vi.unstubAllEnvs()
     }
-    process.env.NODE_ENV = previousNodeEnv
-
-    expect(reply.message).toContain("tentatively agreed")
-    expect(reply.thinkIsTerminated).toBe(false)
   })
 })
+
+function makeAgent(id: string, name: string): Agent {
+  return {
+    id,
+    user_id: `${id}-owner`,
+    name,
+    role: `${name} role`,
+    system_prompt: `${name} system prompt`,
+    avatar_url: null,
+    is_public: true,
+    created_at: "2026-05-10T00:00:00.000Z",
+  }
+}
+
+function makeMessage({
+  turnNumber,
+  senderAgentId,
+  content,
+}: {
+  turnNumber: number
+  senderAgentId: string
+  content: string
+}): ConversationMessage {
+  return {
+    id: `message-${turnNumber}`,
+    conversation_id: "conversation",
+    sender_agent_id: senderAgentId,
+    content,
+    is_termination: false,
+    termination_reason: null,
+    turn_number: turnNumber,
+    status: "completed",
+    created_at: "2026-05-10T00:00:00.000Z",
+  }
+}

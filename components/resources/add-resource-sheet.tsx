@@ -1,38 +1,31 @@
 "use client"
 
 import {
-  BriefcaseIcon,
   CalendarClockIcon,
-  CalendarDaysIcon,
   ChevronLeftIcon,
   LockIcon,
   NotebookPenIcon,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 
 import {
   AvailabilityPolicyForm,
-  MockResourceForm,
-  ProjectBriefForm,
+  ShortNoteResourceForm,
   SharingRulesForm,
   SoftHoldCalendarForm,
 } from "@/components/resources/resource-forms"
+import type { Resource } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
-export type AddResourceKind =
-  | "availability_policy"
-  | "soft_hold_calendar"
-  | "mock"
-  | "sharing_rules"
-  | "project_brief"
+export type AddResourceKind = "availability_policy" | "mock" | "sharing_rules"
 
 const kinds: {
   id: AddResourceKind
   title: string
   description: string
-  icon: React.ReactNode
+  icon: ReactNode
 }[] = [
   {
     id: "availability_policy",
@@ -41,15 +34,9 @@ const kinds: {
     icon: <CalendarClockIcon className="size-6" aria-hidden />,
   },
   {
-    id: "soft_hold_calendar",
-    title: "Soft hold calendar",
-    description: "Internal tentative holds before writing to Google Calendar.",
-    icon: <CalendarDaysIcon className="size-6" aria-hidden />,
-  },
-  {
     id: "mock",
-    title: "Mock resource",
-    description: "Freeform text context for quick demos and manual notes.",
+    title: "Short note",
+    description: "Freeform text context your agents can summarize.",
     icon: <NotebookPenIcon className="size-6" aria-hidden />,
   },
   {
@@ -58,54 +45,75 @@ const kinds: {
     description: "Privacy boundaries for what agents may reveal.",
     icon: <LockIcon className="size-6" aria-hidden />,
   },
-  {
-    id: "project_brief",
-    title: "Project brief",
-    description: "Goals, status, constraints, and what the agent may say.",
-    icon: <BriefcaseIcon className="size-6" aria-hidden />,
-  },
 ]
 
 function formForKind(kind: AddResourceKind) {
   switch (kind) {
     case "availability_policy":
       return <AvailabilityPolicyForm />
-    case "soft_hold_calendar":
-      return <SoftHoldCalendarForm />
     case "mock":
-      return <MockResourceForm />
+      return <ShortNoteResourceForm />
     case "sharing_rules":
       return <SharingRulesForm />
-    case "project_brief":
-      return <ProjectBriefForm />
     default:
       return null
   }
 }
 
-export function AddResourceSheetContent({ open }: { open: boolean }) {
+export function AddResourceSheetContent({
+  open,
+  editMockResource,
+  editSoftHoldResource,
+  onClearEdit,
+}: {
+  open: boolean
+  editMockResource?: Resource | null
+  editSoftHoldResource?: Resource | null
+  onClearEdit?: () => void
+}) {
   const [step, setStep] = useState<1 | 2>(1)
   const [kind, setKind] = useState<AddResourceKind | null>(null)
+
+  const editingMock = editMockResource?.type === "mock"
+  const editingSoftHold = editSoftHoldResource?.type === "soft_hold_calendar"
 
   useEffect(() => {
     if (!open) {
       setStep(1)
       setKind(null)
+      return
     }
-  }, [open])
+    if (editingMock) {
+      setStep(2)
+      setKind("mock")
+      return
+    }
+    if (editingSoftHold) {
+      setStep(2)
+      setKind(null)
+    }
+  }, [open, editingMock, editingSoftHold, editMockResource?.id, editSoftHoldResource?.id])
+
+  const title = editingMock
+    ? "Edit short note"
+    : editingSoftHold
+      ? "Edit soft hold calendar"
+      : step === 1
+        ? "Add new resource"
+        : kinds.find((k) => k.id === kind)?.title
 
   return (
     <>
       <SheetHeader>
-        <SheetTitle>{step === 1 ? "Add new resource" : kinds.find((k) => k.id === kind)?.title}</SheetTitle>
+        <SheetTitle>{title}</SheetTitle>
         <SheetDescription>
-          {step === 1
+          {step === 1 && !editingMock && !editingSoftHold
             ? "Choose a type, then fill in only the details you need."
             : "First-party resources define what your agents may use and summarize."}
         </SheetDescription>
       </SheetHeader>
       <div className="flex flex-col gap-4 px-4 pb-4">
-        {step === 1 ? (
+        {step === 1 && !editingMock && !editingSoftHold ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {kinds.map((item) => (
               <button
@@ -136,6 +144,9 @@ export function AddResourceSheetContent({ open }: { open: boolean }) {
               size="sm"
               className="-ml-2 w-fit gap-1"
               onClick={() => {
+                if (editingMock || editingSoftHold) {
+                  onClearEdit?.()
+                }
                 setStep(1)
                 setKind(null)
               }}
@@ -143,7 +154,13 @@ export function AddResourceSheetContent({ open }: { open: boolean }) {
               <ChevronLeftIcon className="size-4" aria-hidden />
               Back
             </Button>
-            {kind ? formForKind(kind) : null}
+            {editingMock ? (
+              <ShortNoteResourceForm resource={editMockResource} />
+            ) : editingSoftHold && editSoftHoldResource ? (
+              <SoftHoldCalendarForm resource={editSoftHoldResource} />
+            ) : kind ? (
+              formForKind(kind)
+            ) : null}
           </>
         )}
       </div>

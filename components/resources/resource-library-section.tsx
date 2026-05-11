@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  BriefcaseIcon,
   CalendarClockIcon,
   CalendarDaysIcon,
   FileTextIcon,
@@ -50,10 +49,6 @@ function ResourceTypeIcon({ type }: { type: Resource["type"] }) {
     return <LockIcon className={cn(common, "text-primary")} aria-hidden />
   }
 
-  if (type === "project_brief") {
-    return <BriefcaseIcon className={cn(common, "text-primary")} aria-hidden />
-  }
-
   if (type === "mock") {
     return <NotebookPenIcon className={cn(common, "text-primary")} aria-hidden />
   }
@@ -64,9 +59,13 @@ function ResourceTypeIcon({ type }: { type: Resource["type"] }) {
 export function ResourceLibrarySection({
   resources,
   emptyAddTrigger,
+  onEditShortNote,
+  onEditSoftHoldCalendar,
 }: {
   resources: Resource[]
   emptyAddTrigger?: ReactNode
+  onEditShortNote?: (resource: Resource) => void
+  onEditSoftHoldCalendar?: (resource: Resource) => void
 }) {
   const [filter, setFilter] = useState<ResourceLibraryFilter>("all")
 
@@ -123,12 +122,29 @@ export function ResourceLibrarySection({
                   <CardDescription className="line-clamp-3">{resourceSummary(resource)}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center justify-end gap-3 pt-0">
-                  <form action={deleteResource}>
-                    <input type="hidden" name="resourceId" value={resource.id} />
-                    <Button type="submit" variant="outline" size="sm">
-                      Delete
+                  {resource.type === "mock" && onEditShortNote ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => onEditShortNote(resource)}>
+                      Edit
                     </Button>
-                  </form>
+                  ) : null}
+                  {resource.type === "soft_hold_calendar" && onEditSoftHoldCalendar ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEditSoftHoldCalendar(resource)}
+                    >
+                      Edit settings
+                    </Button>
+                  ) : null}
+                  {resource.type === "soft_hold_calendar" ? null : (
+                    <form action={deleteResource}>
+                      <input type="hidden" name="resourceId" value={resource.id} />
+                      <Button type="submit" variant="outline" size="sm">
+                        Delete
+                      </Button>
+                    </form>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -142,7 +158,7 @@ export function ResourceLibrarySection({
             <div>
               <p className="font-medium">No resources yet</p>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                Start with an availability policy or a soft hold calendar—whatever fits how you work.
+                Start with an availability policy or a short note, or connect an external calendar below.
               </p>
             </div>
             {emptyAddTrigger}

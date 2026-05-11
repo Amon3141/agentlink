@@ -2,10 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { runNextConversationTurn } from "@/lib/conversations/orchestrator"
 import {
   availabilityPolicyConfigSchema,
-  projectBriefConfigSchema,
   sharingRulesConfigSchema,
   softHoldCalendarConfigSchema,
   softHoldInputSchema,
@@ -103,18 +101,46 @@ export async function saveMockResource(formData: FormData) {
     redirect("/resources")
   }
 
-  const { error } = await supabase.from("resources").insert({
-    user_id: userId,
-    type: "mock",
-    name: String(formData.get("name") ?? "Mock resource"),
-    config: { text: String(formData.get("text") ?? "") },
-  })
+  const resourceId = String(formData.get("resourceId") ?? "").trim()
+  const name = String(formData.get("name") ?? "Short note").trim() || "Short note"
+  const config = { text: String(formData.get("text") ?? "") }
 
-  if (error) {
-    redirect("/resources?error=resource")
+  if (resourceId && uuidPattern.test(resourceId)) {
+    const { data: existing, error: fetchError } = await supabase
+      .from("resources")
+      .select("id, type")
+      .eq("id", resourceId)
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (fetchError || !existing || existing.type !== "mock") {
+      redirect("/resources?error=resource")
+    }
+
+    const { error } = await supabase
+      .from("resources")
+      .update({ name, config })
+      .eq("id", resourceId)
+      .eq("user_id", userId)
+
+    if (error) {
+      redirect("/resources?error=resource")
+    }
+  } else {
+    const { error } = await supabase.from("resources").insert({
+      user_id: userId,
+      type: "mock",
+      name,
+      config,
+    })
+
+    if (error) {
+      redirect("/resources?error=resource")
+    }
   }
 
   revalidatePath("/resources")
+  revalidatePath("/agents")
   redirect("/resources")
 }
 
@@ -149,12 +175,28 @@ export async function saveAvailabilityPolicyResource(formData: FormData) {
   redirect("/resources")
 }
 
-export async function saveSoftHoldCalendarResource(formData: FormData) {
+export async function updateSoftHoldCalendarResource(formData: FormData) {
   const supabase = await createSupabaseServerClient()
   const userId = await getCurrentUserId()
 
   if (!supabase || !userId) {
     redirect("/resources")
+  }
+
+  const resourceId = String(formData.get("resourceId") ?? "").trim()
+  if (!uuidPattern.test(resourceId)) {
+    redirect("/resources?error=soft-hold-calendar")
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("resources")
+    .select("id, type")
+    .eq("id", resourceId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (fetchError || !existing || existing.type !== "soft_hold_calendar") {
+    redirect("/resources?error=soft-hold-calendar")
   }
 
   const parsed = softHoldCalendarConfigSchema.safeParse({
@@ -167,12 +209,14 @@ export async function saveSoftHoldCalendarResource(formData: FormData) {
     redirect("/resources?error=soft-hold-calendar")
   }
 
-  const { error } = await supabase.from("resources").insert({
-    user_id: userId,
-    type: "soft_hold_calendar",
-    name: formText(formData, "name", "AgentLink soft holds"),
-    config: parsed.data,
-  })
+  const { error } = await supabase
+    .from("resources")
+    .update({
+      name: formText(formData, "name", "Soft hold calendar"),
+      config: parsed.data,
+    })
+    .eq("id", resourceId)
+    .eq("user_id", userId)
 
   if (error) {
     redirect("/resources?error=soft-hold-calendar")
@@ -209,42 +253,6 @@ export async function saveSharingRulesResource(formData: FormData) {
 
   if (error) {
     redirect("/resources?error=sharing-rules")
-  }
-
-  revalidatePath("/resources")
-  revalidatePath("/agents")
-  redirect("/resources")
-}
-
-export async function saveProjectBriefResource(formData: FormData) {
-  const supabase = await createSupabaseServerClient()
-  const userId = await getCurrentUserId()
-
-  if (!supabase || !userId) {
-    redirect("/resources")
-  }
-
-  const parsed = projectBriefConfigSchema.safeParse({
-    projectName: formText(formData, "projectName", "Untitled project"),
-    goals: formText(formData, "goals", ""),
-    status: formText(formData, "status", ""),
-    constraints: formText(formData, "constraints", ""),
-    allowedToShare: formText(formData, "allowedToShare", ""),
-  })
-
-  if (!parsed.success) {
-    redirect("/resources?error=project-brief")
-  }
-
-  const { error } = await supabase.from("resources").insert({
-    user_id: userId,
-    type: "project_brief",
-    name: formText(formData, "name", parsed.data.projectName),
-    config: parsed.data,
-  })
-
-  if (error) {
-    redirect("/resources?error=project-brief")
   }
 
   revalidatePath("/resources")
@@ -331,6 +339,21 @@ export async function deleteResource(formData: FormData) {
 
   if (!supabase || !userId || !uuidPattern.test(resourceId)) {
     redirect("/resources?error=delete")
+  }
+
+  const { data: row, error: typeError } = await supabase
+    .from("resources")
+    .select("type")
+    .eq("id", resourceId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (typeError || !row) {
+    redirect("/resources?error=delete")
+  }
+
+  if (row.type === "soft_hold_calendar") {
+    redirect("/resources?error=delete-protected")
   }
 
   const { error } = await supabase
@@ -481,14 +504,120 @@ export async function createConversation(formData: FormData) {
     redirect("/conversations?error=create")
   }
 
-  const firstTurn = await runNextConversationTurn(data.id)
-  if (firstTurn.status === "failed") {
-    revalidatePath("/conversations")
-    redirect(`/conversations/${data.id}?error=first-turn`)
+  revalidatePath("/conversations")
+  revalidatePath(`/conversations/${data.id}`)
+  redirect(`/conversations/${data.id}`)
+}
+
+export async function deleteConversation(conversationId: string) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId || !uuidPattern.test(conversationId)) {
+    return { ok: false as const, error: "You need to be signed in to remove a conversation." }
+  }
+
+  const { data: convo, error: loadError } = await supabase
+    .from("conversations")
+    .select("id,initiator_id,friend_user_id")
+    .eq("id", conversationId)
+    .single()
+
+  if (loadError || !convo) {
+    return { ok: false as const, error: "Conversation not found." }
+  }
+
+  if (convo.initiator_id !== userId && convo.friend_user_id !== userId) {
+    return { ok: false as const, error: "You can only delete conversations you participate in." }
+  }
+
+  const { error: deleteError } = await supabase.from("conversations").delete().eq("id", conversationId)
+
+  if (deleteError) {
+    return { ok: false as const, error: deleteError.message }
   }
 
   revalidatePath("/conversations")
-  redirect(`/conversations/${data.id}`)
+  revalidatePath(`/conversations/${conversationId}`)
+  revalidatePath("/")
+  return { ok: true as const }
+}
+
+export async function stopConversation(conversationId: string) {
+  const supabase = await createSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  if (!supabase || !userId || !uuidPattern.test(conversationId)) {
+    return { ok: false as const, error: "You need to be signed in to stop a conversation." }
+  }
+
+  const { data: convo, error: loadError } = await supabase
+    .from("conversations")
+    .select("id,status,initiator_id,outcome")
+    .eq("id", conversationId)
+    .single()
+
+  if (loadError || !convo) {
+    return { ok: false as const, error: "Conversation not found." }
+  }
+
+  if (convo.initiator_id !== userId) {
+    return { ok: false as const, error: "Only the person who started this conversation can stop it." }
+  }
+
+  if (convo.status !== "ongoing") {
+    return { ok: false as const, error: "This conversation is not ongoing anymore." }
+  }
+
+  const { error: pendingError } = await supabase
+    .from("conversation_messages")
+    .update({
+      status: "failed",
+      content: "This turn was cancelled when the conversation was stopped.",
+      termination_reason: "Conversation stopped by the initiator.",
+    })
+    .eq("conversation_id", conversationId)
+    .eq("status", "pending")
+
+  if (pendingError) {
+    return { ok: false as const, error: pendingError.message }
+  }
+
+  const priorOutcome =
+    convo.outcome && typeof convo.outcome === "object" && !Array.isArray(convo.outcome)
+      ? (convo.outcome as Record<string, unknown>)
+      : {}
+
+  const { data: updated, error: completeError } = await supabase
+    .from("conversations")
+    .update({
+      status: "completed",
+      outcome: {
+        ...priorOutcome,
+        stoppedByUser: true,
+        summary: "You stopped this conversation before the agents finished on their own.",
+        reason: "The thread was ended manually from your account.",
+      },
+    })
+    .eq("id", conversationId)
+    .eq("status", "ongoing")
+    .select("id")
+    .maybeSingle()
+
+  if (completeError) {
+    return { ok: false as const, error: completeError.message }
+  }
+
+  if (!updated) {
+    return {
+      ok: false as const,
+      error: "Could not stop the conversation (it may have just ended). Refresh the page.",
+    }
+  }
+
+  revalidatePath(`/conversations/${conversationId}`)
+  revalidatePath("/conversations")
+  return { ok: true as const }
 }
 
 async function syncAgentResources(agentId: string, resourceIds: string[]) {

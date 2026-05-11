@@ -1,7 +1,6 @@
 import type { Resource } from "@/lib/types"
 import {
   availabilityPolicyConfigSchema,
-  projectBriefConfigSchema,
   sharingRulesConfigSchema,
   softHoldCalendarConfigSchema,
 } from "@/lib/resources/schemas"
@@ -14,7 +13,7 @@ export function summarizeResources(resources: Resource[]) {
   return resources
     .map((resource) => {
       if (resource.type === "mock") {
-        return `Mock resource "${resource.name}": ${String(resource.config.text ?? "")}`
+        return `Short note "${resource.name}": ${String(resource.config.text ?? "")}`
       }
 
       if (resource.type === "availability_policy") {
@@ -61,20 +60,6 @@ export function summarizeResources(resources: Resource[]) {
           return `Sharing rules "${resource.name}": unavailable due to invalid configuration.`
         }
         return `Sharing rules "${resource.name}" for ${parsed.data.audience}: ${parsed.data.rules}`
-      }
-
-      if (resource.type === "project_brief") {
-        const parsed = projectBriefConfigSchema.safeParse(resource.config)
-        if (!parsed.success) {
-          return `Project brief "${resource.name}": unavailable due to invalid configuration.`
-        }
-        return [
-          `Project brief "${parsed.data.projectName}":`,
-          parsed.data.goals ? `goals: ${parsed.data.goals}` : "",
-          parsed.data.status ? `status: ${parsed.data.status}` : "",
-          parsed.data.constraints ? `constraints: ${parsed.data.constraints}` : "",
-          parsed.data.allowedToShare ? `may share: ${parsed.data.allowedToShare}` : "",
-        ].filter(Boolean).join(" | ")
       }
 
       return `Google Calendar "${resource.name}": ${

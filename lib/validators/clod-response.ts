@@ -129,7 +129,7 @@ function extractJsonTextCandidate(text: string): string | null {
 function coerceMessage(value: unknown): string | null {
   if (typeof value === "string") {
     const t = value.trim()
-    return t.length > 0 ? t : null
+    return t.length > 0 && !isKnownTemplateLeak(t) ? t : null
   }
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value)
@@ -205,7 +205,7 @@ export function resolveClodAgentResponse(raw: unknown): ParsedClodAgentResponse 
   text = stripMarkdownCodeFence(text).trim()
   text = text.replace(/\s+/g, " ").trim()
 
-  const body = text.length > 0 ? text.slice(0, 4000) : FALLBACK_MESSAGE
+  const body = text.length > 0 && !isKnownTemplateLeak(text) ? text.slice(0, 4000) : FALLBACK_MESSAGE
   return {
     message: body,
     thinkIsTerminated: false,
@@ -230,4 +230,13 @@ export function parseClodAgentResponse(value: unknown): ParsedClodAgentResponse 
     throw new Error("Clod returned invalid JSON.")
   }
   return clodAgentResponseSchema.parse(structured)
+}
+
+export function isKnownTemplateLeak(message: string) {
+  const normalized = message.toLowerCase().replace(/\s+/g, " ").trim()
+  return (
+    normalized.includes("friendly natural language response") ||
+    normalized.includes("brief reason for the tool request") ||
+    normalized === "natural-language message shown to the other agent"
+  )
 }

@@ -6,6 +6,8 @@ import { PageSection } from "@/components/layout/page-section"
 import { Button } from "@/components/ui/button"
 import { getConversations } from "@/lib/data"
 
+export const dynamic = "force-dynamic"
+
 export default async function ConversationsPage() {
   const conversations = await getConversations()
   const ongoing = conversations.filter((conversation) => conversation.status === "ongoing")

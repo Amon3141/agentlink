@@ -1,4 +1,4 @@
-import { CheckCircle2Icon } from "lucide-react"
+import { CheckCircle2Icon, OctagonMinusIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function OutcomePanel({
@@ -10,12 +10,16 @@ export function OutcomePanel({
     return null
   }
 
+  const stoppedByUser = outcome.stoppedByUser === true
+
   return (
     <Card className="sketch-border bg-accent/80">
       <CardHeader>
-        <CheckCircle2Icon />
-        <CardTitle>Final outcome</CardTitle>
-        <CardDescription>{String(outcome.reason ?? outcome.nextAction ?? "Ready for human approval.")}</CardDescription>
+        {stoppedByUser ? <OctagonMinusIcon /> : <CheckCircle2Icon />}
+        <CardTitle>{stoppedByUser ? "Conversation stopped" : "Final outcome"}</CardTitle>
+        <CardDescription>
+          {String(outcome.reason ?? outcome.nextAction ?? "Ready for human approval.")}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm">{String(outcome.summary ?? "The agents completed the conversation.")}</p>

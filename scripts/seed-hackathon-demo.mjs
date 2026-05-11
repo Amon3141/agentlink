@@ -330,10 +330,12 @@ async function run(url, serviceKey) {
     {
       id: IDS.resSoftHoldCal,
       user_id: amonId,
-      type: "mock",
-      name: "Soft holds",
+      type: "soft_hold_calendar",
+      name: "Soft hold calendar",
       config: {
-        text: "When soft_hold_calendar resources exist, agents can use internal tools for tentative blocks. For now this is plain-text context for the demo story.",
+        timezone: "America/Los_Angeles",
+        defaultDurationMinutes: 30,
+        notes: "Hackathon demo — tentative holds before real calendar writes.",
       },
     },
     {
@@ -783,7 +785,7 @@ async function run(url, serviceKey) {
 
   console.log("\n--- Hackathon demo flow ---")
   console.log(
-    `1. Sign in as ${amonProfile.username} — 3 private agents (Mochi, Sora, Nami) + mock/Google resources; soft holds only if migration 0003 + soft_hold_calendar exist.`
+    `1. Sign in as ${amonProfile.username} — 3 private agents (Mochi, Sora, Nami) + mock/Google resources; built-in soft hold calendar when migration 0003+ is applied.`
   )
   if (kizawaId) {
     console.log(

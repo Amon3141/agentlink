@@ -2,12 +2,11 @@ import type { ProviderConnectionCard, Resource } from "@/lib/types"
 
 export function resourceTypeLabel(type: Resource["type"]) {
   const labels: Record<Resource["type"], string> = {
-    mock: "Mock",
+    mock: "Note",
     google_calendar: "Google Calendar",
     availability_policy: "Availability policy",
     soft_hold_calendar: "Soft hold calendar",
     sharing_rules: "Sharing rules",
-    project_brief: "Project brief",
   }
 
   return labels[type]
@@ -69,12 +68,6 @@ export function resourceSummary(resource: Resource) {
 
   if (resource.type === "sharing_rules") {
     return truncateSummary(String(resource.config.rules ?? "Privacy boundaries for agent replies"))
-  }
-
-  if (resource.type === "project_brief") {
-    return truncateSummary(
-      String(resource.config.projectName ?? resource.config.goals ?? "Project context")
-    )
   }
 
   return resource.config.connected ? "Connected calendar context" : "Calendar not connected yet"

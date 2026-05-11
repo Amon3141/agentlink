@@ -45,6 +45,18 @@ export const demoResources: Resource[] = [
     created_at: now,
   },
   {
+    id: "resource-soft-hold",
+    user_id: "demo-user",
+    type: "soft_hold_calendar",
+    name: "Soft hold calendar",
+    config: {
+      timezone: "local",
+      defaultDurationMinutes: 30,
+      notes: "",
+    },
+    created_at: now,
+  },
+  {
     id: "resource-calendar",
     user_id: "demo-user",
     type: "google_calendar",

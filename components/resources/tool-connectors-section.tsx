@@ -12,7 +12,6 @@ import { providerSlug, providerStatusLabel } from "@/components/resources/resour
 function ProviderChip({ card }: { card: ProviderConnectionCard }) {
   const slug = providerSlug(card.provider)
   const connected = card.status === "connected" && card.connection
-  const isInternal = card.provider === "internal"
 
   return (
     <div className="flex min-w-[13rem] flex-1 flex-col gap-3 rounded-2xl border bg-muted/30 p-4">
@@ -29,24 +28,18 @@ function ProviderChip({ card }: { card: ProviderConnectionCard }) {
         </Badge>
       </div>
       {connected ? (
-        isInternal ? (
-          <p className="text-xs text-muted-foreground">
-            Always available. Grant tools from agent settings.
-          </p>
-        ) : (
-          <form action={`/api/resources/${slug}/disconnect`} method="post">
-            <Button type="submit" variant="outline" size="sm">
-              Disconnect
-            </Button>
-          </form>
-        )
+        <form action={`/api/resources/${slug}/disconnect`} method="post">
+          <Button type="submit" variant="outline" size="sm">
+            Disconnect
+          </Button>
+        </form>
       ) : (
         <a
           className={buttonVariants({ variant: "secondary", size: "sm" })}
           aria-disabled={!card.configured}
           href={card.configured ? `/api/resources/${slug}/connect` : undefined}
         >
-          {card.configured ? `Connect ${card.label}` : "Not configured"}
+          {card.configured ? `Connect ${card.label}` : "Coming soon"}
         </a>
       )}
     </div>
@@ -78,9 +71,11 @@ export function ToolConnectorsSection({ providerCards }: { providerCards: Provid
           </div>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          {providerCards.map((card) => (
-            <ProviderChip key={card.provider} card={card} />
-          ))}
+          {providerCards
+            .filter((card) => card.provider !== "internal")
+            .map((card) => (
+              <ProviderChip key={card.provider} card={card} />
+            ))}
         </CardContent>
       </Card>
     </section>

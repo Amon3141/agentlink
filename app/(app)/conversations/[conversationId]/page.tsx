@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import { getConversation, getConversationToolAudits } from "@/lib/data"
+import { createSupabaseServerClient, getCurrentUserId } from "@/lib/supabase/server"
 import { ChatThread } from "@/components/conversations/chat-thread"
 import { OutcomePanel } from "@/components/conversations/outcome-panel"
 import { PageHeader } from "@/components/layout/page-header"
@@ -11,24 +12,33 @@ export default async function ConversationDetailPage({
   params: Promise<{ conversationId: string }>
 }) {
   const { conversationId } = await params
-  const [conversation, toolAudits] = await Promise.all([
+  const [conversation, toolAudits, supabase, viewerId] = await Promise.all([
     getConversation(conversationId),
     getConversationToolAudits(conversationId),
+    createSupabaseServerClient(),
+    getCurrentUserId(),
   ])
 
   if (!conversation) {
     notFound()
   }
 
+  const viewerCanStopConversation =
+    Boolean(supabase) && conversation.initiator_id === viewerId
+
   return (
     <>
       <PageHeader
         title={conversation.purpose}
-        description={`${conversation.my_agent.name} is talking with ${conversation.friend_agent.name}. Polling continues every 2.5 seconds while ongoing.`}
+        description={`${conversation.my_agent.name} is talking with ${conversation.friend_agent.name}. Turns advance automatically while this thread is ongoing.`}
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <PaperSurface className="flex flex-col gap-5">
-          <ChatThread conversation={conversation} toolAudits={toolAudits} />
+          <ChatThread
+            conversation={conversation}
+            toolAudits={toolAudits}
+            viewerCanStopConversation={viewerCanStopConversation}
+          />
         </PaperSurface>
         <div className="flex flex-col gap-4">
           <OutcomePanel outcome={conversation.outcome} />

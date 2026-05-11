@@ -28,7 +28,9 @@ export default async function NewConversationPage() {
         <Card className="sketch-border bg-card/95">
           <CardHeader>
             <CardTitle>Conversation setup</CardTitle>
-            <CardDescription>The first turn starts automatically after creation.</CardDescription>
+            <CardDescription>
+              You&apos;ll go to the conversation right away; the first reply loads on that page.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form action={createConversation}>

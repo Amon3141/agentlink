@@ -11,6 +11,7 @@ const maxAttempts = 3
 const requestTimeoutMs = 55000
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string }
+type ClodResponseFormat = { type: "json_object" }
 
 export async function callClodAgent(
   prompt: string,
@@ -53,6 +54,7 @@ export async function callClodAgent(
           model,
           messages,
           temperature: 0.4,
+          responseFormat: getClodResponseFormat(),
           signal: controller.signal,
         }
       )
@@ -121,6 +123,7 @@ async function finalizeClodAssistantText({
       { role: "user", content: CLOD_JSON_REPAIR_USER_PROMPT },
     ],
     temperature: 0.15,
+    responseFormat: getClodResponseFormat(),
     signal,
   })
 
@@ -138,6 +141,7 @@ async function fetchClodAssistantText({
   model,
   messages,
   temperature,
+  responseFormat,
   signal,
 }: {
   endpoint: string
@@ -145,6 +149,7 @@ async function fetchClodAssistantText({
   model: string
   messages: ChatMessage[]
   temperature: number
+  responseFormat?: ClodResponseFormat
   signal: AbortSignal
 }): Promise<string> {
   const response = await fetch(getChatCompletionsEndpoint(endpoint), {
@@ -158,6 +163,7 @@ async function fetchClodAssistantText({
       messages,
       temperature,
       max_completion_tokens: 600,
+      ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
     signal,
   })
@@ -171,8 +177,9 @@ async function fetchClodAssistantText({
 }
 
 function demoAgentReply(prompt: string) {
+  const exchangeNumber = Number(/This is exchange (\d+)/.exec(prompt)?.[1] ?? 0)
   const turnCount = (prompt.match(/Turn #/g) ?? []).length
-  if (turnCount >= 2) {
+  if (exchangeNumber >= 3 || turnCount >= 2) {
     return "That works nicely. I will mark this as tentatively agreed and wait for the humans to approve the action."
   }
 
@@ -191,6 +198,12 @@ function getChatCompletionsEndpoint(endpoint: string) {
   }
 
   return `${trimmed}/chat/completions`
+}
+
+function getClodResponseFormat(): ClodResponseFormat | undefined {
+  return process.env.CLOD_RESPONSE_FORMAT === "json_object"
+    ? { type: "json_object" }
+    : undefined
 }
 
 function extractAssistantContent(body: unknown) {

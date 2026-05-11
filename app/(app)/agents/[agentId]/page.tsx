@@ -19,7 +19,7 @@ export default async function AgentEditPage({
   const { agentId } = await params
   const [
     agent,
-    resources,
+    resourcesResult,
     assignedResourceIds,
     providerConnectionCards,
     assignedToolPermissionIds,
@@ -30,6 +30,7 @@ export default async function AgentEditPage({
     getProviderConnectionCards(),
     getAgentToolPermissionIds(agentId),
   ])
+  const resources = resourcesResult.resources
 
   if (!agent) {
     notFound()
