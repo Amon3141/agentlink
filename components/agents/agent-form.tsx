@@ -21,8 +21,31 @@ export function AgentForm({
   providerConnectionCards?: ProviderConnectionCard[]
   assignedToolPermissionIds?: string[]
 }) {
-  const assigned = new Set(assignedResourceIds)
-  const assignedTools = new Set(assignedToolPermissionIds)
+  const defaultResourceIds = new Set(assignedResourceIds)
+  if (!agent) {
+    for (const resource of resources) {
+      if (resource.type === "soft_hold_calendar") {
+        defaultResourceIds.add(resource.id)
+      }
+    }
+  }
+
+  const defaultToolPermissionIds = new Set(assignedToolPermissionIds)
+  if (!agent) {
+    for (const card of providerConnectionCards) {
+      if (
+        card.provider !== "internal" ||
+        card.status !== "connected" ||
+        !card.connection
+      ) {
+        continue
+      }
+      for (const tool of card.tools) {
+        defaultToolPermissionIds.add(`${card.connection.id}:${tool.id}`)
+      }
+    }
+  }
+
   const connectedProviders = providerConnectionCards.filter(
     (card) => card.connection && card.status === "connected"
   )
@@ -95,7 +118,7 @@ export function AgentForm({
                       <Checkbox
                         name="resourceIds"
                         value={resource.id}
-                        defaultChecked={assigned.has(resource.id)}
+                        defaultChecked={defaultResourceIds.has(resource.id)}
                       />
                       <span>
                         {resource.name}
@@ -142,7 +165,7 @@ export function AgentForm({
                                 <Checkbox
                                   name="toolPermissionIds"
                                   value={value}
-                                  defaultChecked={assignedTools.has(value)}
+                                  defaultChecked={defaultToolPermissionIds.has(value)}
                                 />
                                 <span>
                                   {tool.name}

@@ -38,10 +38,7 @@ export function SignInWithGoogleButton() {
     }
 
     setPending(true)
-    const origin =
-      typeof window !== "undefined"
-        ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "")
-        : ""
+    const origin = window.location.origin.replace(/\/$/, "")
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",

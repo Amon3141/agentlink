@@ -150,19 +150,28 @@ export async function getAgentToolPermissionIds(agentId: string): Promise<string
 
 type SupabaseServer = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>
 
-async function ensureDefaultSoftHoldCalendar(supabase: SupabaseServer, userId: string) {
-  const { data: existing, error: selectError } = await supabase
+/** Creates the built-in calendar when missing. Returns a user-visible error message on failure. */
+async function ensureDefaultSoftHoldCalendar(
+  supabase: SupabaseServer,
+  userId: string
+): Promise<string | null> {
+  const { data: rows, error: selectError } = await supabase
     .from("resources")
     .select("id")
     .eq("user_id", userId)
     .eq("type", "soft_hold_calendar")
-    .maybeSingle()
+    .limit(1)
 
-  if (selectError || existing) {
-    return
+  if (selectError) {
+    console.warn("[ensureDefaultSoftHoldCalendar] select failed:", selectError.message)
+    return selectError.message
   }
 
-  const { error } = await supabase.from("resources").insert({
+  if (rows && rows.length > 0) {
+    return null
+  }
+
+  const { error: insertError } = await supabase.from("resources").insert({
     user_id: userId,
     type: "soft_hold_calendar",
     name: "Soft hold calendar",
@@ -173,9 +182,16 @@ async function ensureDefaultSoftHoldCalendar(supabase: SupabaseServer, userId: s
     },
   })
 
-  if (error && error.code !== "23505" && process.env.NODE_ENV === "development") {
-    console.warn("[ensureDefaultSoftHoldCalendar]", error.message)
+  if (!insertError) {
+    return null
   }
+
+  if (insertError.code === "23505") {
+    return null
+  }
+
+  console.warn("[ensureDefaultSoftHoldCalendar] insert failed:", insertError.message)
+  return insertError.message
 }
 
 export const getResources = cache(
@@ -187,7 +203,7 @@ export const getResources = cache(
       return { resources: demoResources, fetchError: null }
     }
 
-    await ensureDefaultSoftHoldCalendar(supabase, userId)
+    const ensureCalendarError = await ensureDefaultSoftHoldCalendar(supabase, userId)
 
     const { data, error } = await supabase
       .from("resources")
@@ -202,9 +218,19 @@ export const getResources = cache(
       return { resources: [], fetchError: error.message }
     }
 
+    const resources = (data ?? []).map(sanitizeResource) as Resource[]
+    const hasSoftHoldCalendar = resources.some((r) => r.type === "soft_hold_calendar")
+
+    let fetchError: string | null = null
+    if (ensureCalendarError && !hasSoftHoldCalendar) {
+      fetchError =
+        "Built-in soft hold calendar could not be created. Apply Supabase migrations through `0006_soft_hold_calendar_builtin.sql` (after `0003_custom_resources_soft_holds.sql`) and ensure your profile row exists. "
+        + `Details: ${ensureCalendarError}`
+    }
+
     return {
-      resources: (data ?? []).map(sanitizeResource) as Resource[],
-      fetchError: null,
+      resources,
+      fetchError,
     }
   }
 )
