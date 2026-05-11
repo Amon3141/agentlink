@@ -44,13 +44,18 @@ export const sharingRulesConfigSchema = z.object({
   rules: z.string().trim().max(1600).default(""),
 })
 
-export const softHoldInputSchema = z.object({
-  resourceId: z.string().uuid(),
-  title: z.string().trim().min(1).max(200),
-  start: z.string().datetime(),
-  end: z.string().datetime(),
-  notes: z.string().trim().max(1000).optional(),
-})
+export const softHoldInputSchema = z
+  .object({
+    resourceId: z.string().uuid(),
+    title: z.string().trim().min(1).max(200),
+    start: z.string().datetime(),
+    end: z.string().datetime(),
+    notes: z.string().trim().max(1000).optional(),
+  })
+  .refine((data) => new Date(data.end).getTime() > new Date(data.start).getTime(), {
+    message: "End must be after start.",
+    path: ["end"],
+  })
 
 export const softHoldWindowSchema = z.object({
   resourceId: z.string().uuid(),

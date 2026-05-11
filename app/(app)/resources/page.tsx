@@ -1,4 +1,4 @@
-import { getProviderConnectionCards, getResources, getSoftHolds } from "@/lib/data"
+import { getProviderConnectionCards, getResources } from "@/lib/data"
 import { ResourcesPageContent } from "@/components/resources/resources-page-content"
 
 export default async function ResourcesPage({
@@ -7,10 +7,9 @@ export default async function ResourcesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
-  const [{ resources, fetchError }, providerCards, softHolds] = await Promise.all([
+  const [{ resources, fetchError }, providerCards] = await Promise.all([
     getResources(),
     getProviderConnectionCards(),
-    getSoftHolds(),
   ])
 
   const urlError = typeof params.error === "string" ? params.error : undefined
@@ -24,7 +23,6 @@ export default async function ResourcesPage({
     <ResourcesPageContent
       resources={resources}
       providerCards={providerCards}
-      softHolds={softHolds}
       resourcesFetchError={fetchError}
       urlError={urlError}
       deleted={deleted}

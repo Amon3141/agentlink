@@ -1,0 +1,1 @@
+{"project_id": "zdpobgkjhmlpinsgmiix", "query": "-- Allow either participant to remove a conversation from their history (cascades messages).\ncreate policy \"participants delete conversations\"\n  on public.conversations for delete\n  to authenticated\n  using (auth.uid() = initiator_id or auth.uid() = friend_user_id);\n"}

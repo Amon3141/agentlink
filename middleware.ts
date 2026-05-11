@@ -40,7 +40,9 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const isPublicAuth =
-    path.startsWith("/sign-in") || path === "/auth/magic-link"
+    path.startsWith("/sign-in") ||
+    path === "/auth/magic-link" ||
+    path === "/auth/demo-login"
 
   if (!user && !isPublicAuth) {
     const url = request.nextUrl.clone()

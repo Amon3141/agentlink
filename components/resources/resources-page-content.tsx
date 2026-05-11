@@ -6,7 +6,7 @@ import { useState } from "react"
 import { PageHeader } from "@/components/layout/page-header"
 import { AddResourceSheetContent } from "@/components/resources/add-resource-sheet"
 import { ResourceBoard } from "@/components/resources/resource-board"
-import type { ProviderConnectionCard, Resource, SoftHold } from "@/lib/types"
+import type { ProviderConnectionCard, Resource } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
@@ -19,14 +19,13 @@ function resourcesUrlErrorMessage(code: string): string {
     case "sharing-rules":
       return "Could not save sharing rules. Check the form values and try again."
     case "soft-hold":
+      return "Could not create that plan. Use an end time after the start time."
     case "soft-hold-resource":
-      return "Could not create that plan. Check the time range and calendar."
+      return "Could not create that plan. Choose your AgentLink calendar or refresh if it is missing."
     case "soft-hold-cancel":
       return "Could not cancel that plan."
     case "delete":
       return "Could not delete that resource."
-    case "delete-protected":
-      return "The built-in calendar cannot be deleted."
     case "resource":
       return "Could not save that short note."
     default:
@@ -37,14 +36,12 @@ function resourcesUrlErrorMessage(code: string): string {
 export function ResourcesPageContent({
   resources,
   providerCards,
-  softHolds,
   resourcesFetchError,
   urlError,
   deleted,
 }: {
   resources: Resource[]
   providerCards: ProviderConnectionCard[]
-  softHolds: SoftHold[]
   resourcesFetchError?: string | null
   urlError?: string
   deleted?: boolean
@@ -119,7 +116,6 @@ export function ResourcesPageContent({
         <ResourceBoard
           resources={resources}
           providerCards={providerCards}
-          softHolds={softHolds}
           emptyAddTrigger={
             <SheetTrigger
               render={

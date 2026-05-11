@@ -137,14 +137,12 @@ export function ResourceLibrarySection({
                       Edit settings
                     </Button>
                   ) : null}
-                  {resource.type === "soft_hold_calendar" ? null : (
-                    <form action={deleteResource}>
-                      <input type="hidden" name="resourceId" value={resource.id} />
-                      <Button type="submit" variant="outline" size="sm">
-                        Delete
-                      </Button>
-                    </form>
-                  )}
+                  <form action={deleteResource}>
+                    <input type="hidden" name="resourceId" value={resource.id} />
+                    <Button type="submit" variant="outline" size="sm">
+                      Delete
+                    </Button>
+                  </form>
                 </CardContent>
               </Card>
             ))}

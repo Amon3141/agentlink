@@ -16,6 +16,10 @@ function signInErrorMessage(code: string | undefined) {
       return "We could not finish signing you in. Try Google or request a new magic link."
     case "missing-code":
       return "That sign-in link was incomplete. Start again from this page."
+    case "demo-login":
+      return "Demo login failed. Run npm run seed:hackathon so the demo user exists, or check HACKATHON_DEMO_LOGIN_PASSWORD."
+    case "demo-login-disabled":
+      return "Demo login is disabled in this environment."
     case "magic-link":
     default:
       return "Email sign-in failed. Try Google or request a fresh magic link."
@@ -64,9 +68,18 @@ export default async function SignInPage({
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
-                    <Input id="email" name="email" type="email" required placeholder="you@example.com" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="text"
+                      autoComplete="email"
+                      required
+                      placeholder="you@example.com (or demo / hana)"
+                    />
                     <FieldDescription>
-                      We will email you a one-time link (subject to send limits).
+                      We will email you a one-time link (subject to send limits). For the hackathon demo, type{" "}
+                      <span className="font-medium">demo</span> or <span className="font-medium">hana</span> instead of
+                      an email, or use the button below.
                     </FieldDescription>
                   </Field>
                   <Button type="submit" size="lg" className="w-full">
@@ -74,6 +87,11 @@ export default async function SignInPage({
                     Send magic link
                   </Button>
                 </FieldGroup>
+              </form>
+              <form action="/auth/demo-login" method="post">
+                <Button type="submit" variant="secondary" size="lg" className="w-full">
+                  Demo login (Hana)
+                </Button>
               </form>
             </>
           ) : null}

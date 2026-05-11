@@ -1,4 +1,8 @@
-import { InfoIcon, SearchIcon } from "lucide-react"
+"use client"
+
+import { useActionState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { SearchIcon } from "lucide-react"
 import { sendFriendRequest } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,6 +10,19 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input"
 
 export function FriendSearch({ status }: { status?: string }) {
+  const router = useRouter()
+  const [state, formAction, isPending] = useActionState(sendFriendRequest, null)
+
+  useEffect(() => {
+    if (state?.success) {
+      router.refresh()
+    }
+  }, [state?.success, router])
+
+  const message = state?.message ?? status ?? ""
+  const showBanner = Boolean(message)
+  const bannerClass = state && !state.success ? "bg-destructive/10" : "bg-secondary"
+
   return (
     <Card className="sketch-border bg-card/95">
       <CardHeader>
@@ -20,16 +37,19 @@ export function FriendSearch({ status }: { status?: string }) {
         </div>
       </CardHeader>
       <CardContent>
-        {status ? (
-          <p className="mb-4 rounded-2xl bg-secondary px-4 py-3 text-sm">{status}</p>
+        {showBanner ? (
+          <p className={`mb-4 rounded-2xl px-4 py-3 text-sm ${bannerClass}`}>{message}</p>
         ) : null}
-        <form action={sendFriendRequest} className={status ? "border-t border-border/60 pt-4" : undefined}>
+        <form
+          action={formAction}
+          className={showBanner ? "border-t border-border/60 pt-4" : undefined}
+        >
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="query" className="flex w-full items-center gap-2">
                 Email or username
               </FieldLabel>
-              <Input id="query" name="query" placeholder="hana@example.com" />
+              <Input id="query" name="query" placeholder="hana@example.com" disabled={isPending} />
               <FieldDescription className="text-xs text-muted-foreground/75">
                 Hackathon demo — try{" "}
                 <span className="font-mono text-[11px] text-muted-foreground/90">
@@ -38,7 +58,9 @@ export function FriendSearch({ status }: { status?: string }) {
                 .
               </FieldDescription>
             </Field>
-            <Button type="submit">Send request</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Sending…" : "Send request"}
+            </Button>
           </FieldGroup>
         </form>
       </CardContent>

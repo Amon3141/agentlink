@@ -352,10 +352,6 @@ export async function deleteResource(formData: FormData) {
     redirect("/resources?error=delete")
   }
 
-  if (row.type === "soft_hold_calendar") {
-    redirect("/resources?error=delete-protected")
-  }
-
   const { error } = await supabase
     .from("resources")
     .delete()
@@ -367,13 +363,25 @@ export async function deleteResource(formData: FormData) {
   redirect(error ? "/resources?error=delete" : "/resources?deleted=1")
 }
 
-export async function sendFriendRequest(formData: FormData) {
+export type SendFriendRequestResult = {
+  message: string
+  success: boolean
+}
+
+export async function sendFriendRequest(
+  _prev: SendFriendRequestResult | null,
+  formData: FormData
+): Promise<SendFriendRequestResult> {
   const supabase = await createSupabaseServerClient()
   const userId = await getCurrentUserId()
   const query = String(formData.get("query") ?? "").trim().toLowerCase()
 
-  if (!supabase || !userId || !query) {
-    redirect("/friends")
+  if (!query) {
+    return { message: "Enter an email or username.", success: false }
+  }
+
+  if (!supabase || !userId) {
+    return { message: "You need to be signed in to send a request.", success: false }
   }
 
   const column = query.includes("@") ? "email" : "username"
@@ -385,7 +393,7 @@ export async function sendFriendRequest(formData: FormData) {
     .maybeSingle()
 
   if (!profile) {
-    redirect("/friends?error=not-found")
+    return { message: "No matching user was found.", success: false }
   }
 
   const { data: existing } = await supabase
@@ -397,7 +405,7 @@ export async function sendFriendRequest(formData: FormData) {
     .maybeSingle()
 
   if (existing) {
-    redirect("/friends?error=already-connected")
+    return { message: "You already have a friend row with that user.", success: false }
   }
 
   const { error } = await supabase.from("friends").insert({
@@ -407,11 +415,11 @@ export async function sendFriendRequest(formData: FormData) {
   })
 
   if (error) {
-    redirect("/friends?error=request")
+    return { message: "That friend action could not be completed.", success: false }
   }
 
   revalidatePath("/friends")
-  redirect("/friends?sent=1")
+  return { message: "Friend request sent.", success: true }
 }
 
 export async function acceptFriendRequest(formData: FormData) {
